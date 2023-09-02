@@ -30,12 +30,9 @@ To run these projects, you'll need:
 - TensorFlow
 - SUMO (Simulation of Urban MObility)
 
-### Installing SUMO
+### SUMO
 
-sumo
-====
-
-About
+#### About
 -----
 
 sumo, the SUpport MOdule manager, is a set of tools to support software
@@ -44,12 +41,12 @@ build dependencies and consistent builds of the
 `EPICS <https://epics.anl.gov>`_ base and `EPICS <https://epics.anl.gov>`_
 support modules.
 
-Author
+#### Author
 ------
 
 Goetz Pfeiffer <Goetz.Pfeiffer@helmholtz-berlin.de>
 
-Documentation
+#### Documentation
 -------------
 
 Documentation is available online here:
@@ -58,7 +55,7 @@ Documentation is available online here:
 
 Documentation is also included in the software distribution in HTML format.
 
-Installation
+#### Installation
 ------------
 
 You can install sumo with `pip <https://pip.pypa.io/en/stable>`_
