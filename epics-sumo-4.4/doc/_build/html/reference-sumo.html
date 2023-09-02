@@ -1,0 +1,2382 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>sumo &mdash; EPICS-sumo 4.4 documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Using sumo in your application" href="app-usage.html" />
+    <link rel="prev" title="sumo-scan" href="reference-sumo-scan.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="index.html" class="icon icon-home"> EPICS-sumo
+          </a>
+              <div class="version">
+                4.4
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="sumo-install.html">Installing Sumo</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="sumo-install.html#parts-of-sumo">Parts of sumo</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sumo-install.html#requirements">Requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sumo-install.html#install-from-pypi-with-pip">Install from pypi with pip</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sumo-install.html#install-from-a-debian-package">Install from a debian package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sumo-install.html#install-from-a-rpm-package">Install from a rpm package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sumo-install.html#install-from-source-tar-gz-or-zip-file">Install from source (tar.gz or zip file)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="sumo-install.html#install-as-root-to-default-directories">Install as root to default directories</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sumo-install.html#install-to-a-separate-directory">Install to a separate directory</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sumo-install.html#install-in-your-home">Install in your home</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="sumo-install.html#the-sumo-configuration-file">The sumo configuration file</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#the-problem">The problem</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#new-version-of-a-direct-dependency">New version of a direct dependency</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#new-version-of-an-indirect-dependency">New version of an indirect dependency</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#the-overall-picture">The overall picture</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#the-solution">The solution</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#builds">Builds</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#database-files-and-directories">Database files and directories</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#creating-a-build">Creating a build</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#using-a-build">Using a build</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#the-implementation">The implementation</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="modulespecs.html">Module Specifications</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="modulespecs.html#sources-of-module-specifications">Sources of module specifications</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="modulespecs.html#the-configuration-file">The configuration file</a></li>
+<li class="toctree-l3"><a class="reference internal" href="modulespecs.html#the-command-line-option-m-or-module">The command line option “-m” or “–module”</a></li>
+<li class="toctree-l3"><a class="reference internal" href="modulespecs.html#arguments-to-a-command">Arguments to a command</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="modulespecs.html#combining-all-module-specifications">Combining all module specifications</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="modulespecs.html#override-mode">Override mode</a></li>
+<li class="toctree-l3"><a class="reference internal" href="modulespecs.html#append-mode">Append mode</a></li>
+<li class="toctree-l3"><a class="reference internal" href="modulespecs.html#processing-the-list">Processing the list</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="modulespecs.html#the-format-of-a-module-specification">The format of a module specification</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="modulespecs.html#module-versions">Module versions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="modulespecs.html#commands">Commands</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="modulespecs.html#clear">clear</a></li>
+<li class="toctree-l4"><a class="reference internal" href="modulespecs.html#rm">rm</a></li>
+<li class="toctree-l4"><a class="reference internal" href="modulespecs.html#load">load</a></li>
+<li class="toctree-l4"><a class="reference internal" href="modulespecs.html#build">build</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="configuration-files.html">Configuration Files</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="configuration-files.html#the-philosphy">The philosphy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="configuration-files.html#file-format">File format</a></li>
+<li class="toctree-l2"><a class="reference internal" href="configuration-files.html#environment-variable-expansion">Environment variable expansion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="configuration-files.html#using-more-than-one-configuration-file">Using more than one configuration file</a></li>
+<li class="toctree-l2"><a class="reference internal" href="configuration-files.html#default-paths">Default paths</a></li>
+<li class="toctree-l2"><a class="reference internal" href="configuration-files.html#the-config-option">The config option</a></li>
+<li class="toctree-l2"><a class="reference internal" href="configuration-files.html#load-commands-in-configuration-files">Load commands in configuration files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="configuration-files.html#the-configuration-file-for-sumo-scan">The configuration file for sumo-scan</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="configuration-files.html#keys-in-the-sumo-scan-configuration-file">Keys in the sumo-scan configuration file</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="configuration-files.html#the-configuration-file-for-sumo">The configuration file for sumo</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="configuration-files.html#keys-in-the-sumo-configuration-file">Keys in the sumo configuration file</a></li>
+<li class="toctree-l3"><a class="reference internal" href="configuration-files.html#example-of-a-sumo-configuration-file">Example of a sumo configuration file</a></li>
+<li class="toctree-l3"><a class="reference internal" href="configuration-files.html#example-of-modules-files">Example of MODULES files</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="reference-sumo-scan.html">sumo-scan</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="reference-sumo-scan.html#what-the-script-does">What the script does</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference-sumo-scan.html#how-it-works">How it works</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo-scan.html#phase-i-release-file-scanning">Phase I, RELEASE file scanning</a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo-scan.html#phase-ii-grouping">Phase II, Grouping</a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo-scan.html#phase-iii-repository-scan">Phase III, repository scan</a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo-scan.html#optional-phase-iv-name-to-paths-map">Optional Phase IV, name to paths map</a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo-scan.html#optional-phase-v-paths-to-names-map">Optional Phase V, paths to names map</a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo-scan.html#program-output">Program output</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="reference-sumo-scan.html#commands">Commands</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo-scan.html#config-list">config list</a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo-scan.html#config-show-optionnames">config show [OPTIONNAMES]</a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo-scan.html#config-make-filename-optionnames">config make FILENAME [OPTIONNAMES]</a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo-scan.html#all">all</a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo-scan.html#deps">deps</a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo-scan.html#groups">groups</a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo-scan.html#repos">repos</a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo-scan.html#name2paths">name2paths</a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo-scan.html#path2names">path2names</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="reference-sumo-scan.html#options">Options</a></li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">sumo</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#what-the-script-does">What the script does</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#how-it-works">How it works</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#the-dependency-database">The dependency database</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#aliases">aliases</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#dependencies">dependencies</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#extra">extra</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#make-recipes">make-recipes</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#releasefile">releasefile</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#source">source</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="#path">path</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#tar">tar</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#darcs">darcs</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#hg">hg</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#git">git</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#svn">svn</a></li>
+<li class="toctree-l5"><a class="reference internal" href="#cvs">cvs</a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="#weight">weight</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#the-scan-database">The scan database</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#the-build-database">The build database</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#moduledata">moduledata</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#linkdata">linkdata</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#state">state</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#configuration-files">Configuration Files</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#commands">Commands</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#maincommands">maincommands</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#help-command">help COMMAND</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#config-subcommand">config SUBCOMMAND</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#lock-file">lock FILE</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#unlock-file">unlock FILE</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#db-subcommand">db SUBCOMMAND</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#build-subcommand">build SUBCOMMAND</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#subcommands-for-maincommand-config">subcommands for maincommand “config”</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#config-list">config list</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#config-local-directory">config local DIRECTORY</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#config-make-filename-optionnames">config make FILENAME [OPTIONNAMES]</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#config-new-directory-template">config new DIRECTORY TEMPLATE</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#config-show-optionnames">config show [OPTIONNAMES]</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#config-standalone-directory">config standalone DIRECTORY</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#subcommands-for-maincommand-db">subcommands for maincommand “db”</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#db-alias-add-module-dependency-alias">db alias-add MODULE DEPENDENCY ALIAS</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#db-appconvert-scanfile">db appconvert SCANFILE</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#db-check">db check</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#db-clonemodule-old-module-new-module-versions">db clonemodule OLD-MODULE NEW-MODULE [VERSIONS]</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#db-cloneversion-module-old-version-new-version-sourcespec">db cloneversion MODULE OLD-VERSION NEW-VERSION [SOURCESPEC]</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#db-commands-module-lines">db commands MODULE LINES</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#db-convert-scanfile">db convert SCANFILE</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#db-dependency-add-module-dependency">db dependency-add MODULE DEPENDENCY</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#db-dependency-delete-module-dependency">db dependency-delete MODULE DEPENDENCY</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#db-edit">db edit</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#db-extra-module-lines">db extra MODULE [LINES]</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#db-find-regexp">db find REGEXP</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#db-format">db format</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#db-list-modules">db list MODULES</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#db-make-recipes-module-target-lines">db make-recipes MODULE [TARGET] [LINES]</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#db-merge-db">db merge DB</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#db-modconvert-scanfile-modules">db modconvert SCANFILE MODULES</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#db-releasefilename-module-releasefilename">db releasefilename MODULE RELEASEFILENAME</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#db-replaceversion-module-old-version-new-version">db replaceversion MODULE OLD-VERSION NEW-VERSION</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#db-show-modules">db show MODULES</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#db-weight-weight-modules">db weight WEIGHT MODULES</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="#subcommands-for-maincommand-build">subcommands for maincommand “build”</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#build-delete-buildtags">build delete BUILDTAGS</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#build-find-modules">build find MODULES</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#build-getmodules-buildtag-modules">build getmodules BUILDTAG [MODULES]</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#build-list">build list</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#build-new-modules">build new MODULES</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#build-remake-buildtag">build remake BUILDTAG</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#build-show-buildtag">build show BUILDTAG</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#build-showmodules-buildtag">build showmodules [BUILDTAG]</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#build-showdependencies-buildtag">build showdependencies [BUILDTAG]</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#build-showdependents-buildtag">build showdependents [BUILDTAG]</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#build-state-buildtag-new-state">build state BUILDTAG [NEW-STATE]</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#build-try-modules">build try MODULES</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#build-use-modules">build use MODULES</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#command-completion">Command completion</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#prerequisites">Prerequisites</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#activate-command-completion-on-the-fly">Activate command completion on the fly</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#activate-command-completion-permanently">Activate command completion permanently</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#completion-cache-files">Completion cache files</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#the-help-pager">The help pager</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#options">Options</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#opt-postload-files"><code class="docutils literal notranslate"><span class="pre">--#opt-postload</span> <span class="pre">FILES</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#opt-preload-files"><code class="docutils literal notranslate"><span class="pre">--#opt-preload</span> <span class="pre">FILES</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#postload-files"><code class="docutils literal notranslate"><span class="pre">--#postload</span> <span class="pre">FILES</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#preload-files"><code class="docutils literal notranslate"><span class="pre">--#preload</span> <span class="pre">FILES</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#a-alias-alias-alias"><code class="docutils literal notranslate"><span class="pre">-a</span> <span class="pre">ALIAS,</span> <span class="pre">--alias</span> <span class="pre">ALIAS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#all-builds"><code class="docutils literal notranslate"><span class="pre">--all-builds</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#a-append-optionname"><code class="docutils literal notranslate"><span class="pre">-A,</span> <span class="pre">--append</span> <span class="pre">OPTIONNAME</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#b-brief"><code class="docutils literal notranslate"><span class="pre">-b,</span> <span class="pre">--brief</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#builddir-builddir"><code class="docutils literal notranslate"><span class="pre">--builddir</span> <span class="pre">BUILDDIR</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#t-buildtag-buildtag-buildtag"><code class="docutils literal notranslate"><span class="pre">-t</span> <span class="pre">BUILDTAG,</span> <span class="pre">--buildtag</span> <span class="pre">BUILDTAG</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#buildtag-stem-stem"><code class="docutils literal notranslate"><span class="pre">--buildtag-stem</span> <span class="pre">STEM</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#c-file-config-file"><code class="docutils literal notranslate"><span class="pre">-c</span> <span class="pre">FILE,</span> <span class="pre">--config</span> <span class="pre">FILE</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#dbdir-dbdir"><code class="docutils literal notranslate"><span class="pre">--dbdir</span> <span class="pre">DBDIR</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#dbrepo-repository"><code class="docutils literal notranslate"><span class="pre">--dbrepo</span> <span class="pre">REPOSITORY</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#dbrepomode-mode"><code class="docutils literal notranslate"><span class="pre">--dbrepomode</span> <span class="pre">MODE</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#detail-no"><code class="docutils literal notranslate"><span class="pre">--detail</span> <span class="pre">NO</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#d-expression-dir-patch-expression"><code class="docutils literal notranslate"><span class="pre">-D</span> <span class="pre">EXPRESSION,</span> <span class="pre">--dir-patch</span> <span class="pre">EXPRESSION</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#disable-loading"><code class="docutils literal notranslate"><span class="pre">--disable-loading</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#n-dry-run"><code class="docutils literal notranslate"><span class="pre">-n,</span> <span class="pre">--dry-run</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#dump-modules"><code class="docutils literal notranslate"><span class="pre">--dump-modules</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#dumpdb"><code class="docutils literal notranslate"><span class="pre">--dumpdb</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#editor-editor"><code class="docutils literal notranslate"><span class="pre">--editor</span> <span class="pre">EDITOR</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#exceptions"><code class="docutils literal notranslate"><span class="pre">--exceptions</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#x-regexp-exclude-states-regexp"><code class="docutils literal notranslate"><span class="pre">-X</span> <span class="pre">REGEXP,</span> <span class="pre">--exclude-states</span> <span class="pre">REGEXP</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#x-extraline-extra-extralline"><code class="docutils literal notranslate"><span class="pre">-x</span> <span class="pre">EXTRALINE,</span> <span class="pre">--extra</span> <span class="pre">EXTRALLINE</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#getmodules-buildtag"><code class="docutils literal notranslate"><span class="pre">--getmodules</span> <span class="pre">BUILDTAG</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#h-options-help-options"><code class="docutils literal notranslate"><span class="pre">-h</span> <span class="pre">[OPTIONS],</span> <span class="pre">--help</span> <span class="pre">[OPTIONS]</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#jobs"><code class="docutils literal notranslate"><span class="pre">--jobs</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#lines"><code class="docutils literal notranslate"><span class="pre">--lines</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#list"><code class="docutils literal notranslate"><span class="pre">--list</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#localbuilddir-builddir"><code class="docutils literal notranslate"><span class="pre">--localbuilddir</span> <span class="pre">BUILDDIR</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#logmsg-logmessage"><code class="docutils literal notranslate"><span class="pre">--logmsg</span> <span class="pre">LOGMESSAGE</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#makeflags-makeflags"><code class="docutils literal notranslate"><span class="pre">--makeflags</span> <span class="pre">MAKEFLAGS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#m-module-module-module"><code class="docutils literal notranslate"><span class="pre">-m</span> <span class="pre">MODULE,</span> <span class="pre">--module</span> <span class="pre">MODULE</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#no-checkout"><code class="docutils literal notranslate"><span class="pre">--no-checkout</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#c-no-default-config"><code class="docutils literal notranslate"><span class="pre">-C,</span> <span class="pre">--no-default-config</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#n-no-err-build-exists"><code class="docutils literal notranslate"><span class="pre">-N,</span> <span class="pre">--no-err-build-exists</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#no-make"><code class="docutils literal notranslate"><span class="pre">--no-make</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#noignorecase"><code class="docutils literal notranslate"><span class="pre">--noignorecase</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#nolock"><code class="docutils literal notranslate"><span class="pre">--nolock</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#o-outputfile-output-outputfile"><code class="docutils literal notranslate"><span class="pre">-o</span> <span class="pre">OUTPUTFILE,</span> <span class="pre">--output</span> <span class="pre">OUTPUTFILE</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#p-progress"><code class="docutils literal notranslate"><span class="pre">-p,</span> <span class="pre">--progress</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#readonly"><code class="docutils literal notranslate"><span class="pre">--readonly</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#recursive"><code class="docutils literal notranslate"><span class="pre">--recursive</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#scandb-scandb"><code class="docutils literal notranslate"><span class="pre">--scandb</span> <span class="pre">SCANDB</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#sort-build-dependencies-first"><code class="docutils literal notranslate"><span class="pre">--sort-build-dependencies-first</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#sort-build-dependencies-last"><code class="docutils literal notranslate"><span class="pre">--sort-build-dependencies-last</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#summary"><code class="docutils literal notranslate"><span class="pre">--summary</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#test"><code class="docutils literal notranslate"><span class="pre">--test</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#trace"><code class="docutils literal notranslate"><span class="pre">--trace</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#tracemore"><code class="docutils literal notranslate"><span class="pre">--tracemore</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#u-expression-url-patch-expression"><code class="docutils literal notranslate"><span class="pre">-U</span> <span class="pre">EXPRESSION,</span> <span class="pre">--url-patch</span> <span class="pre">EXPRESSION</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#v-verbose"><code class="docutils literal notranslate"><span class="pre">-v,</span> <span class="pre">--verbose</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#version"><code class="docutils literal notranslate"><span class="pre">--version</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="#y-yes"><code class="docutils literal notranslate"><span class="pre">-y,</span> <span class="pre">--yes</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="app-usage.html">Using sumo in your application</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="app-usage.html#use-supports-in-an-application">Use supports in an application</a></li>
+<li class="toctree-l2"><a class="reference internal" href="app-usage.html#use-a-different-version-of-a-support">Use a different version of a support</a></li>
+<li class="toctree-l2"><a class="reference internal" href="app-usage.html#details">Details</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="app-usage.html#modules">MODULES</a></li>
+<li class="toctree-l3"><a class="reference internal" href="app-usage.html#release-for-bl-001">RELEASE for BL-001</a></li>
+<li class="toctree-l3"><a class="reference internal" href="app-usage.html#release-for-bl-002">RELEASE for BL-002</a></li>
+<li class="toctree-l3"><a class="reference internal" href="app-usage.html#makefile-for-bl-002">Makefile for BL-002</a></li>
+<li class="toctree-l3"><a class="reference internal" href="app-usage.html#builds-db">BUILDS.DB</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="dev-usage.html">Develop support modules with sumo</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="dev-usage.html#create-the-sandbox">Create the sandbox</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dev-usage.html#create-a-head-version-of-a-module">Create a “HEAD” version of a module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dev-usage.html#build-the-module-for-the-first-time">Build the module for the first time</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dev-usage.html#change-and-recompile">Change and recompile</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dev-usage.html#test-in-an-application">Test in an application</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dev-usage.html#commit-the-changes-and-define-a-tag">Commit the changes and define a tag</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dev-usage.html#add-the-new-support-to-the-dependency-database">Add the new support to the dependency database</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="example-sumo-build-try.html">Example for sumo build try</a></li>
+<li class="toctree-l1"><a class="reference internal" href="demo.html">sumo demo</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="demo.html#build-an-epics-example">Build an EPICS example</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="demo.html#prepare-the-directory">Prepare the directory</a></li>
+<li class="toctree-l3"><a class="reference internal" href="demo.html#set-up-the-support-and-application-directories">Set up the support and application directories</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="demo.html#set-up-sumo">Set up sumo</a></li>
+<li class="toctree-l2"><a class="reference internal" href="demo.html#migrate-the-example-for-usage-with-sumo">Migrate the example for usage with sumo</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="demo.html#scan-the-support-directory-and-create-a-dependency-database">Scan the support directory and create a dependency database</a></li>
+<li class="toctree-l3"><a class="reference internal" href="demo.html#create-a-copy-of-the-sources-of-the-original-application">Create a copy of the sources of the original application</a></li>
+<li class="toctree-l3"><a class="reference internal" href="demo.html#scan-the-application-to-create-a-modules-file">Scan the application to create a MODULES file</a></li>
+<li class="toctree-l3"><a class="reference internal" href="demo.html#rebuild-the-application-now-with-sumo">Rebuild the application, now with sumo</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="demo.html#what-to-do-now">What to do now</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="migration-examples.html">Migrating supports and applications</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="migration-examples.html#migrating-the-support-directory">Migrating the support directory</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="migration-examples.html#set-up-the-sumo-directory">Set up the sumo directory</a></li>
+<li class="toctree-l3"><a class="reference internal" href="migration-examples.html#scan-the-support-directory-with-sumo-scan">Scan the support directory with sumo-scan</a></li>
+<li class="toctree-l3"><a class="reference internal" href="migration-examples.html#apply-changes-to-the-scan-file-optional">Apply changes to the scan file (optional)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="migration-examples.html#create-the-dependency-database">Create the dependency database</a></li>
+<li class="toctree-l3"><a class="reference internal" href="migration-examples.html#create-the-sumo-configuration-file">Create the sumo configuration file</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="migration-examples.html#migrating-a-single-support">Migrating a single support</a></li>
+<li class="toctree-l2"><a class="reference internal" href="migration-examples.html#migrating-an-application">Migrating an application</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="migration-examples.html#create-configuration-file-and-module-list">Create configuration file and module list</a></li>
+<li class="toctree-l3"><a class="reference internal" href="migration-examples.html#build-all-support-modules-the-application-requires">Build all support modules the application requires</a></li>
+<li class="toctree-l3"><a class="reference internal" href="migration-examples.html#use-the-support-modules-in-the-application">Use the support modules in the application</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="contribute.html">How to Contribute</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="contribute.html#patch-files">Patch files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contribute.html#mercurial-patch-bundle">Mercurial patch bundle</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="glossary.html">Glossary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="license.html">SUMO license</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">EPICS-sumo</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>sumo</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/reference-sumo.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="sumo">
+<h1>sumo<a class="headerlink" href="#sumo" title="Permalink to this headline"></a></h1>
+<section id="what-the-script-does">
+<h2>What the script does<a class="headerlink" href="#what-the-script-does" title="Permalink to this headline"></a></h2>
+<p>The script has two major purposes:</p>
+<ul class="simple">
+<li><p>Manage the <a class="reference internal" href="glossary.html#term-dependency-database"><span class="xref std std-term">dependency database</span></a> <a class="reference internal" href="glossary.html#term-DEPS.DB"><span class="xref std std-term">DEPS.DB</span></a>.
+It is used to create this file from the output of
+<a class="reference internal" href="reference-sumo-scan.html"><span class="doc">sumo-scan</span></a> and to query and
+change that file.</p></li>
+<li><p>Create and manage <a class="reference internal" href="glossary.html#term-builds"><span class="xref std std-term">builds</span></a>. It also keeps note of
+all builds in the build database <a class="reference internal" href="glossary.html#term-BUILDS.DB"><span class="xref std std-term">BUILDS.DB</span></a>.</p></li>
+</ul>
+<p>The script takes one or mode commands and has a number of options. Single
+character options always start with a single dash “-”, long options start with
+a double dash “–”, commands are simple words on the command line.</p>
+</section>
+<section id="how-it-works">
+<h2>How it works<a class="headerlink" href="#how-it-works" title="Permalink to this headline"></a></h2>
+<p>Information on all known <a class="reference internal" href="glossary.html#term-modules"><span class="xref std std-term">modules</span></a> and module <a class="reference internal" href="glossary.html#term-versions"><span class="xref std std-term">versions</span></a> is kept in
+the <a class="reference internal" href="glossary.html#term-dependency-database"><span class="xref std std-term">dependency database</span></a>. This file also contains a <a class="reference internal" href="glossary.html#term-source"><span class="xref std std-term">source</span></a>
+specification for each module that may be a directory, tar file or url or a
+repository specification.</p>
+<p>A complete and consistent set of modules that is compiled is called a
+<a class="reference internal" href="glossary.html#term-build"><span class="xref std std-term">build</span></a>.  All <a class="reference internal" href="glossary.html#term-builds"><span class="xref std std-term">builds</span></a> are kept in a single directory, the
+<a class="reference internal" href="glossary.html#term-support-directory"><span class="xref std std-term">support directory</span></a>. Information on <a class="reference internal" href="glossary.html#term-builds"><span class="xref std std-term">builds</span></a> is kept in a
+<a class="reference external" href="http://www.json.org">JSON</a> file, the build database <a class="reference internal" href="glossary.html#term-BUILDS.DB"><span class="xref std std-term">BUILDS.DB</span></a>.</p>
+<section id="the-dependency-database">
+<span id="reference-sumo-db-the-dependency-database"></span><h3>The dependency database<a class="headerlink" href="#the-dependency-database" title="Permalink to this headline"></a></h3>
+<p>The dependency database <a class="reference internal" href="glossary.html#term-DEPS.DB"><span class="xref std std-term">DEPS.DB</span></a> file is a <a class="reference external" href="http://www.json.org">JSON</a> file
+that contains information on versions of support modules and their
+dependencies. Here is an example how this file looks like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+  <span class="s2">&quot;BSPDEP_TIMER&quot;</span><span class="p">:</span> <span class="p">{</span>
+      <span class="s2">&quot;R6-2&quot;</span><span class="p">:</span> <span class="p">{</span>
+          <span class="s2">&quot;aliases&quot;</span><span class="p">:</span> <span class="p">{</span>
+              <span class="s2">&quot;BASE&quot;</span><span class="p">:</span> <span class="s2">&quot;EPICS_BASE&quot;</span>
+          <span class="p">},</span>
+          <span class="s2">&quot;dependencies&quot;</span><span class="p">:</span> <span class="p">[</span>
+              <span class="s2">&quot;BASE&quot;</span>
+          <span class="p">],</span>
+          <span class="s2">&quot;extra&quot;</span><span class="p">:</span> <span class="p">[</span>
+              <span class="s2">&quot;# BSPDEP_TIMER: board support specific timer support&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;# This is version R6-2&quot;</span>
+          <span class="p">],</span>
+          <span class="s2">&quot;make-recipes&quot;</span><span class="p">:</span> <span class="p">{</span>
+              <span class="s2">&quot;all&quot;</span><span class="p">:</span> <span class="p">[</span>
+                  <span class="s2">&quot;cd $DIR &amp;&amp; ./configure --prefix=.&quot;</span><span class="p">,</span>
+                  <span class="s2">&quot;$(MAKE) -C $DIR&quot;</span>
+              <span class="p">],</span>
+              <span class="s2">&quot;clean&quot;</span><span class="p">:</span> <span class="p">[</span>
+                  <span class="s2">&quot;$(MAKE) -C $DIR realclean&quot;</span>
+              <span class="p">]</span>
+          <span class="p">},</span>
+          <span class="s2">&quot;source&quot;</span><span class="p">:</span> <span class="p">{</span>
+              <span class="s2">&quot;darcs&quot;</span><span class="p">:</span> <span class="p">{</span>
+                  <span class="s2">&quot;tag&quot;</span><span class="p">:</span> <span class="s2">&quot;R6-2&quot;</span><span class="p">,</span>
+                  <span class="s2">&quot;url&quot;</span><span class="p">:</span> <span class="s2">&quot;rcsadm@aragon.acc.bessy.de:/opt/repositories/controls/darcs/epics/support/bspDep/timer&quot;</span>
+              <span class="p">}</span>
+          <span class="p">}</span>
+      <span class="p">}</span>
+  <span class="p">},</span>
+  <span class="s2">&quot;MCAN&quot;</span><span class="p">:</span> <span class="p">{</span>
+      <span class="s2">&quot;R2-4-0&quot;</span><span class="p">:</span> <span class="p">{</span>
+          <span class="s2">&quot;aliases&quot;</span><span class="p">:</span> <span class="p">{</span>
+              <span class="s2">&quot;BASE&quot;</span><span class="p">:</span> <span class="s2">&quot;EPICS_BASE&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;MISC_DBC&quot;</span><span class="p">:</span> <span class="s2">&quot;DBC&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;MISC_DEBUGMSG&quot;</span><span class="p">:</span> <span class="s2">&quot;DEBUGMSG&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;SOFT_DEVHWCLIENT&quot;</span><span class="p">:</span> <span class="s2">&quot;DEVHWCLIENT&quot;</span>
+          <span class="p">},</span>
+          <span class="s2">&quot;dependencies&quot;</span><span class="p">:</span> <span class="p">[</span>
+              <span class="s2">&quot;ALARM&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;BASE&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;MISC_DBC&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;MISC_DEBUGMSG&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;SOFT_DEVHWCLIENT&quot;</span>
+          <span class="p">],</span>
+          <span class="s2">&quot;source&quot;</span><span class="p">:</span> <span class="p">{</span>
+              <span class="s2">&quot;darcs&quot;</span><span class="p">:</span> <span class="p">{</span>
+                  <span class="s2">&quot;tag&quot;</span><span class="p">:</span> <span class="s2">&quot;R2-4-0&quot;</span><span class="p">,</span>
+                  <span class="s2">&quot;url&quot;</span><span class="p">:</span> <span class="s2">&quot;rcsadm@aragon.acc.bessy.de:/opt/Epics/R3.14.12/support/mcan/2-4-0&quot;</span>
+              <span class="p">}</span>
+          <span class="p">}</span>
+      <span class="p">},</span>
+      <span class="s2">&quot;R2-4-1&quot;</span><span class="p">:</span> <span class="p">{</span>
+          <span class="s2">&quot;aliases&quot;</span><span class="p">:</span> <span class="p">{</span>
+              <span class="s2">&quot;BASE&quot;</span><span class="p">:</span> <span class="s2">&quot;EPICS_BASE&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;MISC_DBC&quot;</span><span class="p">:</span> <span class="s2">&quot;DBC&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;MISC_DEBUGMSG&quot;</span><span class="p">:</span> <span class="s2">&quot;DEBUGMSG&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;SOFT_DEVHWCLIENT&quot;</span><span class="p">:</span> <span class="s2">&quot;DEVHWCLIENT&quot;</span>
+          <span class="p">},</span>
+          <span class="s2">&quot;dependencies&quot;</span><span class="p">:</span> <span class="p">[</span>
+              <span class="s2">&quot;ALARM&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;BASE&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;MISC_DBC&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;MISC_DEBUGMSG&quot;</span><span class="p">,</span>
+              <span class="s2">&quot;SOFT_DEVHWCLIENT&quot;</span>
+          <span class="p">],</span>
+          <span class="s2">&quot;source&quot;</span><span class="p">:</span> <span class="p">{</span>
+              <span class="s2">&quot;darcs&quot;</span><span class="p">:</span> <span class="p">{</span>
+                  <span class="s2">&quot;tag&quot;</span><span class="p">:</span> <span class="s2">&quot;R2-4-1&quot;</span><span class="p">,</span>
+                  <span class="s2">&quot;url&quot;</span><span class="p">:</span> <span class="s2">&quot;rcsadm@aragon.acc.bessy.de:/opt/Epics/R3.14.12/support/mcan/2-4-0&quot;</span>
+              <span class="p">}</span>
+          <span class="p">}</span>
+      <span class="p">},</span>
+  <span class="p">},</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The basic datastructure is this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="n">MODULENAME</span> <span class="p">:</span> <span class="p">{</span>
+        <span class="n">VERSIONNAME</span> <span class="p">:</span> <span class="p">{</span>
+            <span class="o">&lt;</span><span class="n">versiondata</span><span class="o">&gt;</span>
+        <span class="p">},</span>
+        <span class="n">VERSIONNAME</span> <span class="p">:</span> <span class="p">{</span>
+            <span class="o">&lt;</span><span class="n">versiondata</span><span class="o">&gt;</span>
+        <span class="p">},</span>
+        <span class="o">...</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The <em>versiondata</em> map has this form:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;aliases&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="o">&lt;</span><span class="n">aliasdata</span><span class="o">&gt;</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;dependencies&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="o">&lt;</span><span class="n">dependency</span> <span class="n">data</span><span class="o">&gt;</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;extra&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="o">&lt;</span><span class="n">extra</span> <span class="n">data</span><span class="o">&gt;</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;make-recipes&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="o">&lt;</span><span class="n">make</span><span class="o">-</span><span class="n">recipes</span> <span class="n">data</span><span class="o">&gt;</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;releasefile&quot;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">releasefilename</span><span class="o">&gt;</span><span class="p">,</span>
+    <span class="s2">&quot;source&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="o">&lt;</span><span class="n">source</span> <span class="n">data</span><span class="o">&gt;</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;weight&quot;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">weight</span><span class="o">&gt;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<section id="aliases">
+<h4>aliases<a class="headerlink" href="#aliases" title="Permalink to this headline"></a></h4>
+<p>When the support module is to be compiled “sumo build” creates a RELEASE file
+from the known dependencies of the module. The RELEASE file contains variable
+definitions, one for each dependency whose name is the module name and whose
+value is the path of the compiled module. If a module needs a variable name
+that is different from the module name, an alias must be defined. For each
+dependency that is part of the alias map, the <em>ALIASNAME</em> of the alias map is
+taken. The <em>aliasdata</em> map has this form:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="n">MODULENAME</span><span class="p">:</span> <span class="n">MODULEALIAS</span><span class="p">,</span>
+    <span class="n">MODULENAME</span><span class="p">:</span> <span class="n">MODULEALIAS</span><span class="p">,</span>
+    <span class="o">...</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="dependencies">
+<h4>dependencies<a class="headerlink" href="#dependencies" title="Permalink to this headline"></a></h4>
+<p>This is a list of <a class="reference internal" href="glossary.html#term-modules"><span class="xref std std-term">modules</span></a> this <a class="reference internal" href="glossary.html#term-module"><span class="xref std std-term">module</span></a> depends on. Note that we
+do not store the <a class="reference internal" href="glossary.html#term-versions"><span class="xref std std-term">versions</span></a> of the <a class="reference internal" href="glossary.html#term-modules"><span class="xref std std-term">modules</span></a> here. Information on
+which <a class="reference internal" href="glossary.html#term-version"><span class="xref std std-term">version</span></a> is compatible with another <a class="reference internal" href="glossary.html#term-version"><span class="xref std std-term">version</span></a> can be found
+in the build database <a class="reference internal" href="glossary.html#term-BUILDS.DB"><span class="xref std std-term">BUILDS.DB</span></a>.  This is the form of the
+<em>dependencies</em> list:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">[</span>
+    <span class="n">MODULENAME</span><span class="p">,</span>
+    <span class="n">MODULENAME</span><span class="p">,</span>
+    <span class="o">...</span>
+<span class="p">]</span>
+</pre></div>
+</div>
+</section>
+<section id="extra">
+<span id="reference-sumo-extra"></span><h4>extra<a class="headerlink" href="#extra" title="Permalink to this headline"></a></h4>
+<p>This <em>optional</em> field is used to specify extra lines that are added to the
+generated RELEASE file of the module.</p>
+<p>This is a list of strings, one for each line to add.</p>
+</section>
+<section id="make-recipes">
+<span id="reference-sumo-make-recipes"></span><h4>make-recipes<a class="headerlink" href="#make-recipes" title="Permalink to this headline"></a></h4>
+<p>This <em>optional</em> field is used to specify alternative make recipes for the
+makefile that is generated for all modules of a build.</p>
+<p>For each of the make targets “all”, “clean”, “config” and “distclean” a list of
+lines can be defined that is put in the generated makefile. In the make-recipes
+map, each of the map keys “all”, “clean”, “config” and “distclean” is optional.
+For convenience, the string “$DIR” is replaced with the special make variable
+<code class="docutils literal notranslate"><span class="pre">$(&#64;D)</span></code> in every line. This is the directory of the checked out module (see
+also documentation of the “make” command). Note that <em>you do not have to
+prepend each line with a &lt;TAB&gt; character</em>, sumo already does this.</p>
+<p>Note that for the “all” target your last recipe line is usually
+<code class="docutils literal notranslate"><span class="pre">$(MAKE)</span> <span class="pre">-C</span> <span class="pre">$DIR</span></code>.</p>
+<p>If you have an empty object (or dictionary in python speak) here, this means
+that the module has no makefile at all. It is just checked out and possibly
+configured (see also <a class="reference internal" href="#reference-sumo-db-commands"><span class="std std-ref">“commands”</span></a>).</p>
+<p>You have an example of a <cite>make-recipes</cite> structure at the top of the chapter
+<a class="reference internal" href="#reference-sumo-db-the-dependency-database"><span class="std std-ref">The dependency database</span></a> .</p>
+<p>You can define make-recipes on the command line with
+<a class="reference internal" href="#reference-sumo-db-make-recipes"><span class="std std-ref">sumo db make-recipes</span></a> or directly in the
+dependency database with <a class="reference internal" href="#reference-sumo-db-edit"><span class="std std-ref">sumo db edit</span></a>.</p>
+<p>Special variables and characters:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">$DIR</span></code>: (sumo) The directory of the MODULE.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">\&quot;</span></code>: (bash) A literal double quote character.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">$(VAR)</span></code>: (make) Insert value of make or shell variable <code class="docutils literal notranslate"><span class="pre">VAR</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">$$</span></code>: (make) A dollar character passed to the shell.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">\\$$</span></code>: (make, bash) A literal dollar character passed to the shell.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">\\</span></code>: (json, bash) At the end of the json string this means line continuation for bash.</p></li>
+</ul>
+<p>This is the form of the <em>make-recipes</em> map:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="s2">&quot;all&quot;</span><span class="p">:</span> <span class="p">[</span>
+    <span class="n">STRING</span><span class="p">,</span>
+    <span class="n">STRING</span><span class="p">,</span>
+    <span class="o">...</span>
+<span class="p">],</span>
+<span class="s2">&quot;clean&quot;</span><span class="p">:</span> <span class="p">[</span>
+    <span class="n">STRING</span><span class="p">,</span>
+    <span class="n">STRING</span><span class="p">,</span>
+    <span class="o">...</span>
+<span class="p">],</span>
+<span class="s2">&quot;config&quot;</span><span class="p">:</span> <span class="p">[</span>
+    <span class="n">STRING</span><span class="p">,</span>
+    <span class="n">STRING</span><span class="p">,</span>
+    <span class="o">...</span>
+<span class="p">],</span>
+<span class="s2">&quot;distclean&quot;</span><span class="p">:</span> <span class="p">[</span>
+    <span class="n">STRING</span><span class="p">,</span>
+    <span class="n">STRING</span><span class="p">,</span>
+    <span class="o">...</span>
+<span class="p">]</span>
+</pre></div>
+</div>
+</section>
+<section id="releasefile">
+<h4>releasefile<a class="headerlink" href="#releasefile" title="Permalink to this headline"></a></h4>
+<p>This <em>optional</em> field is used to specify an alternative name for the generated
+RELEASE file. The default name, if releasefile is not given, is
+<cite>configure/RELEASE</cite>.</p>
+</section>
+<section id="source">
+<span id="reference-sumo-source-data"></span><h4>source<a class="headerlink" href="#source" title="Permalink to this headline"></a></h4>
+<p><em>source data</em> describes where the <a class="reference internal" href="glossary.html#term-sources"><span class="xref std std-term">sources</span></a> of a <a class="reference internal" href="glossary.html#term-module"><span class="xref std std-term">module</span></a> can be
+found. It is a map with a single key. The key has one of the following values:</p>
+<ul class="simple">
+<li><p>path: This specifies a <em>directory</em> with the sources. The sources are copied
+from that location.</p></li>
+<li><p>tar: This specifies a <em>tar file</em> with the sources. The tar file is fetched
+and extracted.</p></li>
+<li><p>darcs: This specifies a <em>darcs repository</em>.</p></li>
+<li><p>hg: This specifies a <em>mercurial repository</em>.</p></li>
+<li><p>git: This specifies a <em>git repository</em>.</p></li>
+<li><p>svn This specifies a <em>subversion repository</em>.</p></li>
+<li><p>cvs This specifies a <em>cvs repository</em>.</p></li>
+</ul>
+<p>In the following description of source data, <em>FILEURL</em> means a string that is
+either the path of a file on the local filesystem <em>or</em> an url of a file with
+this form:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">http://</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ftp://</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ssh://</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">file://</span></code></p></li>
+</ul>
+<p id="reference-sumo-db-commands">In the following description, <em>COMMANDS</em> means a list of strings that are
+command lines which are executed in the given order inside the module directory
+<em>after</em> the module was checked out. Possible patches (see below) are applied
+after the commands. You may find the feature useful for git sub repositories
+which must be initialized by an extra git command.</p>
+<p>In the following description of source data, <em>PATCHFILES</em> means a list of
+strings that are names of <em>patchfiles</em>. These are applied to the source with
+the patch utility after the source is fetched. The strings specifying
+patchfiles are FILEURLs.</p>
+<section id="path">
+<h5>path<a class="headerlink" href="#path" title="Permalink to this headline"></a></h5>
+<p>This is used to specify a directory that contains all the sources.</p>
+<p>For a directory in the local host, the <em>source data</em> has this form:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;path&quot;</span><span class="p">:</span> <span class="s2">&quot;PATH&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>For a directory on a remote host that can be accessed with ssh, the <em>source
+data</em> has this form:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;path&quot;</span><span class="p">:</span> <span class="s2">&quot;USER@HOST:REMOTEPATH&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="tar">
+<h5>tar<a class="headerlink" href="#tar" title="Permalink to this headline"></a></h5>
+<p>This is used to specify a tar, gzip tar or bzip tar file that contains the
+sources. The filename must have one of these extensions:</p>
+<ul class="simple">
+<li><p>.tar : a simple tar file</p></li>
+<li><p>.tar.gz : a tar file compressed with gzip</p></li>
+<li><p>.tgz : a tar file compressed with gzip</p></li>
+<li><p>.tar.bz2 : a tar file compressed with bzip2</p></li>
+</ul>
+<p>The <em>source data</em> has this form:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;tar&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;commands&quot;</span><span class="p">:</span> <span class="n">COMMANDS</span><span class="p">,</span>
+        <span class="s2">&quot;patches&quot;</span><span class="p">:</span> <span class="n">PATCHFILES</span><span class="p">,</span>
+        <span class="s2">&quot;url&quot;</span><span class="p">:</span> <span class="s2">&quot;FILEURL&quot;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The keys “commands” and “patches” are <em>optional</em>.</p>
+<p>“TARFILE” may be a filename or an URL with one of these forms:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">http://</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ftp://</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ssh://</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">file://</span></code></p></li>
+</ul>
+</section>
+<section id="darcs">
+<h5>darcs<a class="headerlink" href="#darcs" title="Permalink to this headline"></a></h5>
+<p>This is used to specify a source from a darcs repository.</p>
+<p>The <em>source data</em> has this form:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;darcs&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;commands&quot;</span><span class="p">:</span> <span class="n">COMMANDS</span><span class="p">,</span>
+        <span class="s2">&quot;patches&quot;</span><span class="p">:</span> <span class="n">PATCHFILES</span><span class="p">,</span>
+        <span class="s2">&quot;tag&quot;</span><span class="p">:</span> <span class="s2">&quot;TAG&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;url&quot;</span><span class="p">:</span> <span class="s2">&quot;REPOSITORY&quot;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The keys “commands” and “patches” are <em>optional</em>.</p>
+<p>The key “tag” is also <em>optional</em>, if it is given it specifies the darcs tag that
+is used to fetch the source.</p>
+<p>The key “url” is a darcs repository specification (see manual of darcs for
+further information).</p>
+</section>
+<section id="hg">
+<h5>hg<a class="headerlink" href="#hg" title="Permalink to this headline"></a></h5>
+<p>This is used to specify a source from a mercurial repository.</p>
+<p>The <em>source data</em> has this form:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;hg&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;commands&quot;</span><span class="p">:</span> <span class="n">COMMANDS</span><span class="p">,</span>
+        <span class="s2">&quot;patches&quot;</span><span class="p">:</span> <span class="n">PATCHFILES</span><span class="p">,</span>
+        <span class="s2">&quot;rev&quot;</span><span class="p">:</span> <span class="s2">&quot;REVISION&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;tag&quot;</span><span class="p">:</span> <span class="s2">&quot;TAG&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;url&quot;</span><span class="p">:</span> <span class="s2">&quot;REPOSITORY&quot;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The keys “commands” and “patches” are <em>optional</em>.</p>
+<p>The key “rev” is <em>optional</em>, if it is given it specifies the mercurial revision
+that is used to fetch the source. Note that “rev” and “tag” MUST NOT be given
+both.</p>
+<p>The key “tag” is also <em>optional</em>, if it is given it specifies the mercurial tag
+that is used to fetch the source. Note that “rev” and “tag” MUST NOT be given
+both.</p>
+<p>The key “url” is a mercurial repository specification (see manual of mercurial
+for further information).</p>
+</section>
+<section id="git">
+<h5>git<a class="headerlink" href="#git" title="Permalink to this headline"></a></h5>
+<p>This is used to specify a source from a git repository.</p>
+<p>The <em>source data</em> has this form:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;git&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;commands&quot;</span><span class="p">:</span> <span class="n">COMMANDS</span><span class="p">,</span>
+        <span class="s2">&quot;patches&quot;</span><span class="p">:</span> <span class="n">PATCHFILES</span><span class="p">,</span>
+        <span class="s2">&quot;rev&quot;</span><span class="p">:</span> <span class="s2">&quot;REVISION&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;tag&quot;</span><span class="p">:</span> <span class="s2">&quot;TAG&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;url&quot;</span><span class="p">:</span> <span class="s2">&quot;REPOSITORY&quot;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The keys “commands” and “patches”, “rev” and “tag” are <em>optional</em>.</p>
+<p>Note that “rev” and “tag” <strong>must not</strong> be given both.</p>
+<p>If key “rev” is given it specifies the revision key of a <em>git commit</em>. After
+the initial <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">clone</span></code> sumo performs <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">checkout</span> <span class="pre">REVISION</span></code>.</p>
+<p>If the key “tag” is given, it specifies a <em>tag</em> or a <em>branch</em> that is used to
+fetch the source with <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">clone</span> <span class="pre">-b</span> <span class="pre">TAG</span></code>.</p>
+<p>The key “url” is a git repository specification (see manual of git for
+further information).</p>
+</section>
+<section id="svn">
+<h5>svn<a class="headerlink" href="#svn" title="Permalink to this headline"></a></h5>
+<p>This is used to specify a source from a subversion repository.</p>
+<p>The <em>source data</em> has this form:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;svn&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;commands&quot;</span><span class="p">:</span> <span class="n">COMMANDS</span><span class="p">,</span>
+        <span class="s2">&quot;patches&quot;</span><span class="p">:</span> <span class="n">PATCHFILES</span><span class="p">,</span>
+        <span class="s2">&quot;rev&quot;</span><span class="p">:</span> <span class="s2">&quot;REVISION&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;tag&quot;</span><span class="p">:</span> <span class="s2">&quot;TAG&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;url&quot;</span><span class="p">:</span> <span class="s2">&quot;REPOSITORY&quot;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The keys “commands” and “patches” are <em>optional</em>.</p>
+<p>The key “rev” is <em>optional</em>, if it is given it specifies the subversion revision
+that is used to fetch the source. Note that “rev” and “tag” MUST NOT be given
+both.</p>
+<p>The key “tag” is also <em>optional</em>, if it is given it specifies the subversion tag
+that is used to fetch the source. Note that “rev” and “tag” MUST NOT be given
+both. If “tag” is given the string “tags” and the tag name are appended to the
+repository url.</p>
+<p>The key “url” is a subversion repository specification (see manual of
+subversion for further information).</p>
+</section>
+<section id="cvs">
+<h5>cvs<a class="headerlink" href="#cvs" title="Permalink to this headline"></a></h5>
+<p>This is used to specify a source from a cvs repository.</p>
+<p>The <em>source data</em> has this form:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;cvs&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;commands&quot;</span><span class="p">:</span> <span class="n">COMMANDS</span><span class="p">,</span>
+        <span class="s2">&quot;patches&quot;</span><span class="p">:</span> <span class="n">PATCHFILES</span><span class="p">,</span>
+        <span class="s2">&quot;tag&quot;</span><span class="p">:</span> <span class="s2">&quot;TAG&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;url&quot;</span><span class="p">:</span> <span class="s2">&quot;REPOSITORY&quot;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The keys “commands” and “patches” are <em>optional</em>.</p>
+<p>The key “tag” is also <em>optional</em>, if it is given it specifies the cvs tag
+that is used to fetch the source.</p>
+<p>The key “url” is the cvs repository specification. In the following “&lt;cvsroot&gt;”
+means the path of your cvs repository and &lt;module&gt; is the directory within
+“&lt;cvsroot&gt;” where the module is kept. “&lt;user&gt;” and “&lt;host&gt;” are the username
+and hostname when you contact your cvs repository via ssh. There are three
+formats you can use here:</p>
+<dl class="simple">
+<dt>Simple path</dt><dd><p>This has the form <code class="docutils literal notranslate"><span class="pre">&lt;cvsroot&gt;/&lt;module&gt;</span></code></p>
+</dd>
+<dt>Path with “file” prefix</dt><dd><p>This has the form <code class="docutils literal notranslate"><span class="pre">file://&lt;cvsroot&gt;/&lt;module&gt;</span></code></p>
+</dd>
+<dt>SSH path</dt><dd><p>This has the form <code class="docutils literal notranslate"><span class="pre">ssh://&lt;user&gt;&#64;&lt;host&gt;:&lt;cvsroot&gt;/&lt;module&gt;</span></code></p>
+</dd>
+</dl>
+</section>
+</section>
+<section id="weight">
+<h4>weight<a class="headerlink" href="#weight" title="Permalink to this headline"></a></h4>
+<p>This <em>optional</em> field is used to define the weight factor for a module. You
+usually don’t have to use this, see <a class="reference internal" href="#db-weight-weight-modules">db weight WEIGHT MODULES</a> for details.</p>
+</section>
+</section>
+<section id="the-scan-database">
+<h3>The scan database<a class="headerlink" href="#the-scan-database" title="Permalink to this headline"></a></h3>
+<p>When <a class="reference internal" href="reference-sumo-scan.html"><span class="doc">“sumo-scan all”</span></a> is used to scan an existing
+support directory it also gathers information on what version of a module
+depends on what version of another module. In order to keep this information
+although the dependency database doesn’t contain versions of dependencies, this
+information is held in a separate file, the scan database or <a class="reference internal" href="glossary.html#term-SCANDB"><span class="xref std std-term">SCANDB</span></a>.</p>
+<p>Here is an example on how this file looks like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;AGILENT&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;R2-3&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;BASE&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;R3-14-12-2-1&quot;</span><span class="p">:</span> <span class="s2">&quot;scanned&quot;</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;AGILENT-SUPPORT&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;R0-10&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;BASE&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;R3-14-12-2-1&quot;</span><span class="p">:</span> <span class="s2">&quot;scanned&quot;</span>
+            <span class="p">}</span>
+        <span class="p">},</span>
+        <span class="s2">&quot;R0-11&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;BASE&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;R3-14-12-2-1&quot;</span><span class="p">:</span> <span class="s2">&quot;scanned&quot;</span>
+            <span class="p">}</span>
+        <span class="p">},</span>
+        <span class="s2">&quot;R0-12&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;BASE&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;R3-14-12-2-1&quot;</span><span class="p">:</span> <span class="s2">&quot;scanned&quot;</span>
+            <span class="p">}</span>
+        <span class="p">},</span>
+        <span class="s2">&quot;R0-9-5&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;BASE&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;R3-14-12-2-1&quot;</span><span class="p">:</span> <span class="s2">&quot;scanned&quot;</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;ALARM&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;R3-7&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;BASE&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;R3-14-12-2-1&quot;</span><span class="p">:</span> <span class="s2">&quot;scanned&quot;</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;BSPDEP_TIMER&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;R6-2&quot;</span><span class="p">:</span> <span class="s2">&quot;scanned&quot;</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;MISC_DBC&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;R3-0&quot;</span><span class="p">:</span> <span class="s2">&quot;scanned&quot;</span>
+            <span class="p">}</span>
+        <span class="p">},</span>
+        <span class="s2">&quot;R3-8&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;BASE&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;R3-14-12-2-1&quot;</span><span class="p">:</span> <span class="s2">&quot;scanned&quot;</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;BSPDEP_TIMER&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;R6-2&quot;</span><span class="p">:</span> <span class="s2">&quot;scanned&quot;</span>
+            <span class="p">},</span>
+            <span class="s2">&quot;MISC_DBC&quot;</span><span class="p">:</span> <span class="p">{</span>
+                <span class="s2">&quot;R3-0&quot;</span><span class="p">:</span> <span class="s2">&quot;scanned&quot;</span>
+            <span class="p">}</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The basic datastructure is this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="n">MODULENAME</span><span class="p">:</span> <span class="p">{</span>
+        <span class="n">DEPENDENCY_MODULENAME</span><span class="p">:</span> <span class="p">{</span>
+            <span class="n">DEPENDENCY_VERSION</span><span class="p">:</span> <span class="n">STATE</span>
+            <span class="n">DEPENDENCY_VERSION</span><span class="p">:</span> <span class="n">STATE</span>
+            <span class="o">...</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>For each dependency of a module this structure contains the version of the
+dependency and a state. The state can be “stable” or “testing” or “scanned” but
+is always “scanned” if the file was generated with sumo db.</p>
+</section>
+<section id="the-build-database">
+<span id="reference-sumo-the-build-database"></span><h3>The build database<a class="headerlink" href="#the-build-database" title="Permalink to this headline"></a></h3>
+<p>The build database <a class="reference internal" href="glossary.html#term-BUILDS.DB"><span class="xref std std-term">BUILDS.DB</span></a> file is a <a class="reference external" href="http://www.json.org">JSON</a>
+file that contains information of all <a class="reference internal" href="glossary.html#term-builds"><span class="xref std std-term">builds</span></a> in the
+<a class="reference internal" href="glossary.html#term-support-directory"><span class="xref std std-term">support directory</span></a>.</p>
+<p>Here is an example how this file looks like:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;001&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;modules&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;ALARM&quot;</span><span class="p">:</span> <span class="s2">&quot;R3-5&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;ASYN&quot;</span><span class="p">:</span> <span class="s2">&quot;R4-15-bessy2&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;BASE&quot;</span><span class="p">:</span> <span class="s2">&quot;R3-14-8-2-0&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;BSPDEP_CPUBOARDINIT&quot;</span><span class="p">:</span> <span class="s2">&quot;R4-0&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;BSPDEP_TIMER&quot;</span><span class="p">:</span> <span class="s2">&quot;R5-1&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;CSM&quot;</span><span class="p">:</span> <span class="s2">&quot;R3-8&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;EK&quot;</span><span class="p">:</span> <span class="s2">&quot;R2-1&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;GENSUB&quot;</span><span class="p">:</span> <span class="s2">&quot;PATH-1-6-1&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;MCAN&quot;</span><span class="p">:</span> <span class="s2">&quot;R2-3-18&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;MISC&quot;</span><span class="p">:</span> <span class="s2">&quot;R2-4&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;SEQ&quot;</span><span class="p">:</span> <span class="s2">&quot;R2-0-12-1&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;SOFT&quot;</span><span class="p">:</span> <span class="s2">&quot;R2-5&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;VXSTATS&quot;</span><span class="p">:</span> <span class="s2">&quot;R2-0&quot;</span>
+        <span class="p">},</span>
+        <span class="s2">&quot;state&quot;</span><span class="p">:</span> <span class="s2">&quot;stable&quot;</span>
+    <span class="p">},</span>
+    <span class="s2">&quot;002&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="s2">&quot;linked&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;ASYN&quot;</span><span class="p">:</span> <span class="s2">&quot;001&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;BASE&quot;</span><span class="p">:</span> <span class="s2">&quot;001&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;BSPDEP_CPUBOARDINIT&quot;</span><span class="p">:</span> <span class="s2">&quot;001&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;BSPDEP_TIMER&quot;</span><span class="p">:</span> <span class="s2">&quot;001&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;CSM&quot;</span><span class="p">:</span> <span class="s2">&quot;001&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;EK&quot;</span><span class="p">:</span> <span class="s2">&quot;001&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;GENSUB&quot;</span><span class="p">:</span> <span class="s2">&quot;001&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;MISC&quot;</span><span class="p">:</span> <span class="s2">&quot;001&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;SEQ&quot;</span><span class="p">:</span> <span class="s2">&quot;001&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;SOFT&quot;</span><span class="p">:</span> <span class="s2">&quot;001&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;VXSTATS&quot;</span><span class="p">:</span> <span class="s2">&quot;001&quot;</span>
+        <span class="p">},</span>
+        <span class="s2">&quot;modules&quot;</span><span class="p">:</span> <span class="p">{</span>
+            <span class="s2">&quot;ALARM&quot;</span><span class="p">:</span> <span class="s2">&quot;R3-4&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;ASYN&quot;</span><span class="p">:</span> <span class="s2">&quot;R4-15-bessy2&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;BASE&quot;</span><span class="p">:</span> <span class="s2">&quot;R3-14-8-2-0&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;BSPDEP_CPUBOARDINIT&quot;</span><span class="p">:</span> <span class="s2">&quot;R4-0&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;BSPDEP_TIMER&quot;</span><span class="p">:</span> <span class="s2">&quot;R5-1&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;CSM&quot;</span><span class="p">:</span> <span class="s2">&quot;R3-8&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;EK&quot;</span><span class="p">:</span> <span class="s2">&quot;R2-1&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;GENSUB&quot;</span><span class="p">:</span> <span class="s2">&quot;PATH-1-6-1&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;MCAN&quot;</span><span class="p">:</span> <span class="s2">&quot;R2-3-18&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;MISC&quot;</span><span class="p">:</span> <span class="s2">&quot;R2-4&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;SEQ&quot;</span><span class="p">:</span> <span class="s2">&quot;R2-0-12-1&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;SOFT&quot;</span><span class="p">:</span> <span class="s2">&quot;R2-5&quot;</span><span class="p">,</span>
+            <span class="s2">&quot;VXSTATS&quot;</span><span class="p">:</span> <span class="s2">&quot;R2-0&quot;</span>
+        <span class="p">},</span>
+        <span class="s2">&quot;state&quot;</span><span class="p">:</span> <span class="s2">&quot;unstable&quot;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The basic datastructure is this:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="n">BUILDTAG</span> <span class="p">:</span> <span class="p">{</span>
+        <span class="o">&lt;</span><span class="n">builddata</span><span class="o">&gt;</span>
+        <span class="p">},</span>
+    <span class="n">BUILDTAG</span> <span class="p">:</span> <span class="p">{</span>
+        <span class="o">&lt;</span><span class="n">builddata</span><span class="o">&gt;</span>
+        <span class="p">},</span>
+    <span class="o">...</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>The <em>builddata</em> has this form:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;linked&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="o">&lt;</span><span class="n">linkdata</span><span class="o">&gt;</span>
+        <span class="p">},</span>
+    <span class="s2">&quot;modules&quot;</span><span class="p">:</span> <span class="p">{</span>
+        <span class="o">&lt;</span><span class="n">moduledata</span><span class="o">&gt;</span>
+        <span class="p">},</span>
+    <span class="s2">&quot;state&quot;</span><span class="p">:</span> <span class="o">&lt;</span><span class="n">state</span><span class="o">&gt;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<section id="moduledata">
+<h4>moduledata<a class="headerlink" href="#moduledata" title="Permalink to this headline"></a></h4>
+<p>moduledata is a map that maps <a class="reference internal" href="glossary.html#term-modulenames"><span class="xref std std-term">modulenames</span></a> to <a class="reference internal" href="glossary.html#term-versionnames"><span class="xref std std-term">versionnames</span></a>.
+This specifies all the <a class="reference internal" href="glossary.html#term-modules"><span class="xref std std-term">modules</span></a> that are part of the <a class="reference internal" href="glossary.html#term-build"><span class="xref std std-term">build</span></a>.
+Since a <a class="reference internal" href="glossary.html#term-build"><span class="xref std std-term">build</span></a> may reuse <a class="reference internal" href="glossary.html#term-modules"><span class="xref std std-term">modules</span></a> from another <a class="reference internal" href="glossary.html#term-build"><span class="xref std std-term">build</span></a> not
+all modules from this map may actually exist as separate directories of the
+<a class="reference internal" href="glossary.html#term-build"><span class="xref std std-term">build</span></a>. The <em>moduledata</em> has this form:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="n">MODULENAME</span><span class="p">:</span> <span class="n">VERSIONNAME</span><span class="p">,</span>
+    <span class="n">MODULENAME</span><span class="p">:</span> <span class="n">VERSIONNAME</span><span class="p">,</span>
+    <span class="o">...</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="linkdata">
+<h4>linkdata<a class="headerlink" href="#linkdata" title="Permalink to this headline"></a></h4>
+<p>linkdata is a map that maps <a class="reference internal" href="glossary.html#term-modulenames"><span class="xref std std-term">modulenames</span></a> to buildtags. This map contains
+all <a class="reference internal" href="glossary.html#term-modules"><span class="xref std std-term">modules</span></a> of the <a class="reference internal" href="glossary.html#term-build"><span class="xref std std-term">build</span></a> that are reused from other
+<a class="reference internal" href="glossary.html#term-builds"><span class="xref std std-term">builds</span></a>. If a <a class="reference internal" href="glossary.html#term-build"><span class="xref std std-term">build</span></a> has no linkdata, the key “linked” in
+<em>builddata</em> is omitted. The <em>linkdata</em> has this form:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="n">MODULENAME</span><span class="p">:</span> <span class="n">BUILDTAG</span><span class="p">,</span>
+    <span class="n">MODULENAME</span><span class="p">:</span> <span class="n">BUILDTAG</span><span class="p">,</span>
+    <span class="o">...</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="state">
+<h4>state<a class="headerlink" href="#state" title="Permalink to this headline"></a></h4>
+<p>This is a <a class="reference internal" href="glossary.html#term-state"><span class="xref std std-term">state</span></a> string that describes the state of the <a class="reference internal" href="glossary.html#term-build"><span class="xref std std-term">build</span></a>.
+Here are the meanings of the <a class="reference internal" href="glossary.html#term-state"><span class="xref std std-term">state</span></a> string:</p>
+<ul class="simple">
+<li><p>unstable: the <a class="reference internal" href="glossary.html#term-build"><span class="xref std std-term">build</span></a> has been created but not yet compiled</p></li>
+<li><p>testing: the <a class="reference internal" href="glossary.html#term-build"><span class="xref std std-term">build</span></a> has been compiled successfully</p></li>
+<li><p>stable: the <a class="reference internal" href="glossary.html#term-build"><span class="xref std std-term">build</span></a> has been tested in production successfully</p></li>
+<li><p>disabled the <a class="reference internal" href="glossary.html#term-build"><span class="xref std std-term">build</span></a> should no longer be used</p></li>
+<li><p>incomplete the <a class="reference internal" href="glossary.html#term-build"><span class="xref std std-term">build</span></a> is defined but not all module directories are
+created</p></li>
+<li><p>broken the <a class="reference internal" href="glossary.html#term-build"><span class="xref std std-term">build</span></a> is broken and should be deleted</p></li>
+</ul>
+</section>
+</section>
+<section id="configuration-files">
+<h3>Configuration Files<a class="headerlink" href="#configuration-files" title="Permalink to this headline"></a></h3>
+<p>Many options that can be given on the command line can be taken from
+configuration files. For more details see
+<a class="reference internal" href="configuration-files.html"><span class="doc">“configuration files “</span></a>.</p>
+</section>
+</section>
+<section id="commands">
+<h2>Commands<a class="headerlink" href="#commands" title="Permalink to this headline"></a></h2>
+<p>You always have to provide sumo with a <em>maincommand</em>. Some <em>maincommands</em> need
+to be followed by a <em>subcommand</em>.</p>
+<section id="maincommands">
+<h3>maincommands<a class="headerlink" href="#maincommands" title="Permalink to this headline"></a></h3>
+<section id="help-command">
+<span id="reference-sumo-help"></span><h4>help COMMAND<a class="headerlink" href="#help-command" title="Permalink to this headline"></a></h4>
+<p>This command prints help for the given command. It can be invoked as:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">help</span>
+<span class="n">help</span> <span class="n">MAINCOMMAND</span>
+<span class="n">help</span> <span class="n">SUBCOMMAND</span>
+<span class="n">help</span> <span class="n">MAINCOMMAND</span> <span class="n">SUBCOMMAND</span>
+</pre></div>
+</div>
+<p>You get a list of all known MAINCOMMANDS with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">help</span> <span class="n">maincommand</span>
+</pre></div>
+</div>
+</section>
+<section id="config-subcommand">
+<h4>config SUBCOMMAND<a class="headerlink" href="#config-subcommand" title="Permalink to this headline"></a></h4>
+<p>Show the configuration or create or modify a configuration file. These are
+known subcommands here:</p>
+<ul class="simple">
+<li><p>list       - list loaded configuration files</p></li>
+<li><p>local      - create configuration for “local” builds</p></li>
+<li><p>make       - create configuration file</p></li>
+<li><p>new        - create a new configuration file from one of the provided templates</p></li>
+<li><p>show       - show configuration data</p></li>
+<li><p>standalone - create configuration for “standalone” builds</p></li>
+</ul>
+<p>You get help on each subcommand with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">help</span> <span class="n">SUBCOMMAND</span>
+</pre></div>
+</div>
+</section>
+<section id="lock-file">
+<h4>lock FILE<a class="headerlink" href="#lock-file" title="Permalink to this headline"></a></h4>
+<p>Lock a FILE, then exit sumo. This is useful if you want to read or write a
+database file without sumo interfering. Don’t forget to remove the lock later
+with the “unlock” command.</p>
+<p>This command must be followed by a <em>filename</em>.</p>
+</section>
+<section id="unlock-file">
+<h4>unlock FILE<a class="headerlink" href="#unlock-file" title="Permalink to this headline"></a></h4>
+<p>Unlock a FILE, then exit sumo. If you locked a database with “lock” before you
+should always unlock it later, otherwise sumo can’t access the file.</p>
+<p>This command must be followed by a <em>filename</em>.</p>
+</section>
+<section id="db-subcommand">
+<h4>db SUBCOMMAND<a class="headerlink" href="#db-subcommand" title="Permalink to this headline"></a></h4>
+<p>This is the maincommand for all operations that work with the
+dependency database or <a class="reference internal" href="glossary.html#term-DEPS.DB"><span class="xref std std-term">DEPS.DB</span></a> file.</p>
+<p>For all of the db subcommands you have to specify the dependency database
+directory with option <code class="docutils literal notranslate"><span class="pre">--dbdir</span></code> or a configuration file.</p>
+<p>These are the known subcommands here:</p>
+<dl class="simple">
+<dt>alias-add</dt><dd><p>add an alias for a dependency in a module</p>
+</dd>
+<dt>appconvert</dt><dd><p>convert a scanfile to a MODULES file for an application</p>
+</dd>
+<dt>check</dt><dd><p>consistency check of the DB file</p>
+</dd>
+<dt>clonemodule</dt><dd><p>add a module under a new name in the DB file</p>
+</dd>
+<dt>cloneversion</dt><dd><p>create a new DB entry by copying an old one</p>
+</dd>
+<dt>commands</dt><dd><p>define commands to be executed after module checkout</p>
+</dd>
+<dt>convert</dt><dd><p>convert a scanfile created by sumo-scan to a DB file</p>
+</dd>
+<dt>dependency-add</dt><dd><p>add a dependency to a module</p>
+</dd>
+<dt>dependency-delete</dt><dd><p>delete a dependency of a module</p>
+</dd>
+<dt>edit</dt><dd><p>edit the dependency file with an editor</p>
+</dd>
+<dt>extra</dt><dd><p>define extra lines to add to RELEASE file</p>
+</dd>
+<dt>find</dt><dd><p>search for modules with a regexp</p>
+</dd>
+<dt>format</dt><dd><p>reformat the dependency file</p>
+</dd>
+<dt>list</dt><dd><p>list modules or versions of modules</p>
+</dd>
+<dt>make-recipes</dt><dd><p>define special make-recipes for a module</p>
+</dd>
+<dt>merge</dt><dd><p>merge two DB files</p>
+</dd>
+<dt>modconvert</dt><dd><p>print new DB file entries for the given MODULES from a scanfile</p>
+</dd>
+<dt>releasefilename</dt><dd><p>define an alternative filename for the RELEASE file</p>
+</dd>
+<dt>replaceversion</dt><dd><p>replace a DB entry with a new one</p>
+</dd>
+<dt>show</dt><dd><p>show details of moduleversions</p>
+</dd>
+<dt>weight</dt><dd><p>set the weight factor for modules</p>
+</dd>
+</dl>
+<p>You get help on each subcommand with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">help</span> <span class="n">SUBCOMMAND</span>
+</pre></div>
+</div>
+</section>
+<section id="build-subcommand">
+<h4>build SUBCOMMAND<a class="headerlink" href="#build-subcommand" title="Permalink to this headline"></a></h4>
+<p>This is the maincommand for all operations that work with builds and the build
+database (<a class="reference internal" href="glossary.html#term-BUILDS.DB"><span class="xref std std-term">BUILDS.DB</span></a>).</p>
+<p>For all of the build subcommands you have to specify the dependency database
+directory and the build directory with <code class="docutils literal notranslate"><span class="pre">--dbdir</span></code> and <code class="docutils literal notranslate"><span class="pre">--builddir</span></code> or a
+configuration file.</p>
+<p>These are the known subcommands:</p>
+<dl class="simple">
+<dt>delete</dt><dd><p>delete a build</p>
+</dd>
+<dt>find</dt><dd><p>look for builds that match a module specification</p>
+</dd>
+<dt>getmodules</dt><dd><p>From a missing or incomplete module specification create a valid module
+specification from an existing build.</p>
+</dd>
+<dt>list</dt><dd><p>list names of all builds</p>
+</dd>
+<dt>new</dt><dd><p>create a new build</p>
+</dd>
+<dt>remake</dt><dd><p>do “make clean” and “make all” with a build</p>
+</dd>
+<dt>show</dt><dd><p>show details of a build</p>
+</dd>
+<dt>showmodules</dt><dd><p>show modules of a build</p>
+</dd>
+<dt>showdependencies</dt><dd><p>show dependences of a build or all builds</p>
+</dd>
+<dt>showdependents</dt><dd><p>show dependents of a build or all builds</p>
+</dd>
+<dt>state</dt><dd><p>show or change the state of a build</p>
+</dd>
+<dt>try</dt><dd><p>check the module specification for completeness and consistency</p>
+</dd>
+<dt>use</dt><dd><p>use all modules or your module specification in your application</p>
+</dd>
+</dl>
+<p>You get help on each subcommand with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">help</span> <span class="n">SUBCOMMAND</span>
+</pre></div>
+</div>
+</section>
+</section>
+<section id="subcommands-for-maincommand-config">
+<h3>subcommands for maincommand “config”<a class="headerlink" href="#subcommands-for-maincommand-config" title="Permalink to this headline"></a></h3>
+<section id="config-list">
+<span id="reference-sumo-config-list"></span><h4>config list<a class="headerlink" href="#config-list" title="Permalink to this headline"></a></h4>
+<p>List all configuration files that were loaded.</p>
+</section>
+<section id="config-local-directory">
+<h4>config local DIRECTORY<a class="headerlink" href="#config-local-directory" title="Permalink to this headline"></a></h4>
+<p>This command is used to create a new sumo directory with a new build directory
+but using existing builds from your current build directory. It also creates an
+independent copy of the dependency database.</p>
+<p>DIRECTORY is created if it does not yet exist. This command takes all settings
+and command line options but sets dbrepomode to “pull” and dbdir to
+DIRECTORY/database. It also sets localbuilddir to DIRECTORY/build. Option
+dbrepo must be set, this is used to create a local copy of the dependency
+database in DIRECTORY/database. If there is a file “sumo.config” in the current
+working directory it is copied to “sumo.config.bak”. A new file “sumo.config”
+is then created in the current working directory.</p>
+</section>
+<section id="config-make-filename-optionnames">
+<span id="reference-config-make"></span><h4>config make FILENAME [OPTIONNAMES]<a class="headerlink" href="#config-make-filename-optionnames" title="Permalink to this headline"></a></h4>
+<p>Create a new configuration file from the options read from configuration files
+and options from the command line. If FILENAME is ‘-’ dump to the console.
+OPTIONNAMES is an optional list of long option names. If OPTIONNAMES are
+specified, only options from this list are saved in the configuration file.</p>
+<p>If this command is provided with option <code class="docutils literal notranslate"><span class="pre">--getmodules</span> <span class="pre">BUILDTAG</span></code>, module specifications are updated from the specified build. This works like the command
+<a class="reference internal" href="#reference-sumo-build-getmodules"><span class="std std-ref">“build getmodules</span></a>.</p>
+<p>Here are two examples how to use this option:</p>
+<p>If configure/MODULES does not yet exist, create a matching MODULES file for
+build ‘AUTO-004’ for an application:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sumo</span> <span class="n">config</span> <span class="n">make</span> <span class="n">configure</span><span class="o">/</span><span class="n">MODULES</span> <span class="n">alias</span> <span class="n">module</span> <span class="o">--</span><span class="n">getmodules</span> <span class="n">AUTO</span><span class="o">-</span><span class="mi">004</span>
+</pre></div>
+</div>
+<p>If configure/MODULES already exists (and is automatically loaded, see also
+<a class="reference internal" href="configuration-files.html#configuration-files-config-examples"><span class="std std-ref">sumo.config examples</span></a>), update
+versions in MODULES file from the versions used in build ‘AUTO-004’:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sumo</span> <span class="n">config</span> <span class="n">make</span> <span class="n">configure</span><span class="o">/</span><span class="n">MODULES</span> <span class="n">alias</span> <span class="n">module</span> <span class="o">--</span><span class="n">getmodules</span> <span class="n">AUTO</span><span class="o">-</span><span class="mi">004</span>
+</pre></div>
+</div>
+</section>
+<section id="config-new-directory-template">
+<span id="reference-sumo-config-new"></span><h4>config new DIRECTORY TEMPLATE<a class="headerlink" href="#config-new-directory-template" title="Permalink to this headline"></a></h4>
+<p>This command is used to create a new sumo directory with a new build directory
+and a new dependency database.</p>
+<p>It creates a new configuration for sumo. DIRECTORY must not yet exist and is
+created by this command. This command takes all settings and command line
+options but sets dbdir to DIRECTORY/database. It also sets builddir to
+DIRECTORY/build. TEMPLATE determines how the dependency database file is
+created. Currently 2 values are known:</p>
+<dl class="simple">
+<dt>empty</dt><dd><p>Create an empty dependency database.</p>
+</dd>
+<dt>github</dt><dd><p>Create a sample dependency database file with some entries for EPICS base,
+ASYN, STREAMDEVICE, AREADETECTOR, SEQUENCER and more. In this sample all
+module repositories are fetched from the internet, mostly github.</p>
+</dd>
+</dl>
+<p>If there is a file “sumo.config” in the current working directory it is copied
+to “sumo.config.bak”. A new file “sumo.config” is then created in the current
+working directory.</p>
+</section>
+<section id="config-show-optionnames">
+<span id="reference-sumo-config-show"></span><h4>config show [OPTIONNAMES]<a class="headerlink" href="#config-show-optionnames" title="Permalink to this headline"></a></h4>
+<p>Show the configuration in JSON format.  OPTIONNAMES is an optional list of long
+option names. If OPTIONNAMES are specified, only options from this list are
+saved in the configuration file.</p>
+</section>
+<section id="config-standalone-directory">
+<h4>config standalone DIRECTORY<a class="headerlink" href="#config-standalone-directory" title="Permalink to this headline"></a></h4>
+<p>This command is used to create a new sumo directory with an independent build
+directory and an independent copy of the dependency database.</p>
+<p>It creates a new configuration for “standalone” builds. DIRECTORY is created if
+it does not yet exist. This command takes all settings and command line options
+but sets dbrepomode to “pull” and dbdir to DIRECTORY/database. It also sets
+builddir to DIRECTORY/build. Option dbrepo must be set, this is used to create
+a local copy of the dependency database in DIRECTORY/database. If there is a
+file “sumo.config” in the current working directory it is copied to
+“sumo.config.bak”. A new file “sumo.config” is then created in the current
+working directory.</p>
+</section>
+</section>
+<section id="subcommands-for-maincommand-db">
+<h3>subcommands for maincommand “db”<a class="headerlink" href="#subcommands-for-maincommand-db" title="Permalink to this headline"></a></h3>
+<section id="db-alias-add-module-dependency-alias">
+<h4>db alias-add MODULE DEPENDENCY ALIAS<a class="headerlink" href="#db-alias-add-module-dependency-alias" title="Permalink to this headline"></a></h4>
+<p>Define a new <a class="reference internal" href="glossary.html#term-alias"><span class="xref std std-term">alias</span></a> for a <a class="reference internal" href="glossary.html#term-dependency"><span class="xref std std-term">dependency</span></a> of a <a class="reference internal" href="glossary.html#term-module"><span class="xref std std-term">module</span></a>. MODULE
+here is a <a class="reference internal" href="glossary.html#term-modulespec"><span class="xref std std-term">modulespec</span></a> of the form MODULE:VERSION that specifies a single
+version of a module.</p>
+</section>
+<section id="db-appconvert-scanfile">
+<h4>db appconvert SCANFILE<a class="headerlink" href="#db-appconvert-scanfile" title="Permalink to this headline"></a></h4>
+<p>Convert a <a class="reference internal" href="glossary.html#term-scanfile"><span class="xref std std-term">scanfile</span></a> that was created by applying
+<a class="reference internal" href="reference-sumo-scan.html"><span class="doc">“sumo-scan all”</span></a> to an application to a list of
+<a class="reference internal" href="glossary.html#term-aliases"><span class="xref std std-term">aliases</span></a> and <a class="reference internal" href="glossary.html#term-modulespecs"><span class="xref std std-term">modulespecs</span></a> in <a class="reference external" href="http://www.json.org">JSON</a>
+format. If SCANFILE is a dash “-” the program expects the scanfile on stdin.
+The result is printed to the console.</p>
+</section>
+<section id="db-check">
+<h4>db check<a class="headerlink" href="#db-check" title="Permalink to this headline"></a></h4>
+<p>Do some consistency checks on the <a class="reference internal" href="glossary.html#term-dependency-database"><span class="xref std std-term">dependency database</span></a> file in the
+directory specified by <code class="docutils literal notranslate"><span class="pre">--dbdir</span></code>.</p>
+</section>
+<section id="db-clonemodule-old-module-new-module-versions">
+<h4>db clonemodule OLD-MODULE NEW-MODULE [VERSIONS]<a class="headerlink" href="#db-clonemodule-old-module-new-module-versions" title="Permalink to this headline"></a></h4>
+<p>Copy all <a class="reference internal" href="glossary.html#term-versions"><span class="xref std std-term">versions</span></a> of the existing old <a class="reference internal" href="glossary.html#term-module"><span class="xref std std-term">module</span></a> and add this with
+the name of thew new <a class="reference internal" href="glossary.html#term-module"><span class="xref std std-term">module</span></a> to the <a class="reference internal" href="glossary.html#term-dependency"><span class="xref std std-term">dependency</span></a> database.
+OLD-MODULE and NEW-MODULE here are just the module names since the versions may
+follow as a separate argument. If there are no <a class="reference internal" href="glossary.html#term-versions"><span class="xref std std-term">versions</span></a> specified, the
+command copies all existing <a class="reference internal" href="glossary.html#term-versions"><span class="xref std std-term">versions</span></a>. Note that this DOES NOT add the
+new <a class="reference internal" href="glossary.html#term-module"><span class="xref std std-term">module</span></a> as <a class="reference internal" href="glossary.html#term-dependency"><span class="xref std std-term">dependency</span></a> to any other <a class="reference internal" href="glossary.html#term-modules"><span class="xref std std-term">modules</span></a>.</p>
+</section>
+<section id="db-cloneversion-module-old-version-new-version-sourcespec">
+<h4>db cloneversion MODULE OLD-VERSION NEW-VERSION [SOURCESPEC]<a class="headerlink" href="#db-cloneversion-module-old-version-new-version-sourcespec" title="Permalink to this headline"></a></h4>
+<p>This command adds a new <a class="reference internal" href="glossary.html#term-version"><span class="xref std std-term">version</span></a> of a <a class="reference internal" href="glossary.html#term-module"><span class="xref std std-term">module</span></a> to the
+<a class="reference internal" href="glossary.html#term-dependency-database"><span class="xref std std-term">dependency database</span></a> by copying the old <a class="reference internal" href="glossary.html#term-version"><span class="xref std std-term">version</span></a>. MODULE here is
+just the name of the module since the version follows as a separate argument.</p>
+<p>If SOURCESPEC is not given, the command copies the source specification from
+OLD-VERSION but sets the tag to NEW-VERSION. Note that this is not allowed for
+“path” and “tar” sources (see below).</p>
+<p>If SOURCESPEC is given, the source specification from OLD-VERSION is copied an
+the all values from SOURCESPEC are added.</p>
+<dl class="simple">
+<dt>A sourcespec has the form::</dt><dd><p>NAME=VALUE[,VALUE…] [NAME=VALUE[,VALUE..] …]</p>
+</dd>
+</dl>
+<p>In general, NAME must start with a letter or underscore character and must be
+following by a sequence of letters, underscores or digits.</p>
+<p>A VALUE must be a JSON simple value (no map or list). If VALUE is a string, it
+must be enclosed in double quotes ‘”’ if it contains any of the characters ‘”’,
+‘,’ or ‘ ‘.</p>
+<p>These are possible names:</p>
+<dl class="simple">
+<dt>type</dt><dd><p>The source type. Currently known are “path”, “tar”, “cvs”, “svn”, “darcs”,
+“hg” and “git”.</p>
+</dd>
+<dt>url</dt><dd><p>This is the URL. For the types “path” and “tar” it may also be a filename.</p>
+</dd>
+<dt>tag</dt><dd><p>This defines the revision tag.</p>
+</dd>
+<dt>rev</dt><dd><p>This defines the revision hash key.</p>
+</dd>
+<dt>patches</dt><dd><p>This defines names or URLs for patch files. This is the only name, where
+several values may be provided as a comma separated list.</p>
+</dd>
+<dt>commands</dt><dd><p>This defines commands that are executed <em>after</em> the source code is checked
+out and <em>before</em> any patches are applied.</p>
+</dd>
+</dl>
+<p>Note that you can define an empty value (on the bash shell) like in this
+example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">tag</span><span class="o">=</span><span class="s1">&#39;&quot;&quot;&#39;</span>
+</pre></div>
+</div>
+<p>This means that the “tag” is removed from the source specification.</p>
+<p>The command always asks for a confirmation of the action unless option “-y” is
+used.</p>
+</section>
+<section id="db-commands-module-lines">
+<h4>db commands MODULE LINES<a class="headerlink" href="#db-commands-module-lines" title="Permalink to this headline"></a></h4>
+<p>Define commands that are executed after a <a class="reference internal" href="glossary.html#term-module"><span class="xref std std-term">module</span></a> is checked out. See
+also <a class="reference internal" href="#reference-sumo-db-commands"><span class="std std-ref">“commands”</span></a> in the chapter “The
+dependency database”.</p>
+<p>MODULE here is a <a class="reference internal" href="glossary.html#term-modulespec"><span class="xref std std-term">modulespec</span></a> of the form MODULE:VERSION that specifies a
+single version of a module. LINES is a list of space separated strings. It is
+recommended to enclose the line strings in single or double quotes.</p>
+<p>Special variables and characters when you use double quotes:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">\&quot;</span></code>: (bash) A literal double quote character.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">$(VAR)</span></code>: (make) Insert value of make or shell variable <code class="docutils literal notranslate"><span class="pre">VAR</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">$$</span></code>: (make) A dollar character passed to the shell.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">\\$$</span></code>: (make, bash) A literal dollar character passed to the shell.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">\\</span></code>: (json, bash) At the end of the json string this means line continuation for bash.</p></li>
+</ul>
+</section>
+<section id="db-convert-scanfile">
+<h4>db convert SCANFILE<a class="headerlink" href="#db-convert-scanfile" title="Permalink to this headline"></a></h4>
+<p>Convert a <a class="reference internal" href="glossary.html#term-scanfile"><span class="xref std std-term">scanfile</span></a> that was created by by
+<a class="reference internal" href="reference-sumo-scan.html"><span class="doc">“sumo-scan all”</span></a> to a new dependency database.  If
+SCANFILE is a dash “-”, the program expects the scanfile on stdin.  Note that
+options <code class="docutils literal notranslate"><span class="pre">--dbdir</span></code> and <code class="docutils literal notranslate"><span class="pre">--scandb</span></code> are mandatory here. With <code class="docutils literal notranslate"><span class="pre">--dbdir</span></code> you
+specify the directory where the new created
+<a class="reference internal" href="#reference-sumo-db-the-dependency-database"><span class="std std-ref">dependency database</span></a> file is
+stored, with <code class="docutils literal notranslate"><span class="pre">--scandb</span></code> you specify the name of the scan database file. The
+scan database file contains information on what moduleversion can be used with
+what dependency version.</p>
+</section>
+<section id="db-dependency-add-module-dependency">
+<h4>db dependency-add MODULE DEPENDENCY<a class="headerlink" href="#db-dependency-add-module-dependency" title="Permalink to this headline"></a></h4>
+<p>Add a <a class="reference internal" href="glossary.html#term-dependency"><span class="xref std std-term">dependency</span></a> to a <a class="reference internal" href="glossary.html#term-module"><span class="xref std std-term">module</span></a>. MODULE here is a
+<a class="reference internal" href="glossary.html#term-modulespec"><span class="xref std std-term">modulespec</span></a> of the form MODULE:VERSION that specifies a single version
+of a module.</p>
+</section>
+<section id="db-dependency-delete-module-dependency">
+<h4>db dependency-delete MODULE DEPENDENCY<a class="headerlink" href="#db-dependency-delete-module-dependency" title="Permalink to this headline"></a></h4>
+<p>Delete a <a class="reference internal" href="glossary.html#term-dependency"><span class="xref std std-term">dependency</span></a> of a <a class="reference internal" href="glossary.html#term-module"><span class="xref std std-term">module</span></a>. MODULE here is a
+<a class="reference internal" href="glossary.html#term-modulespec"><span class="xref std std-term">modulespec</span></a> of the form MODULE:VERSION that specifies a single version
+of a module.</p>
+</section>
+<section id="db-edit">
+<span id="reference-sumo-db-edit"></span><h4>db edit<a class="headerlink" href="#db-edit" title="Permalink to this headline"></a></h4>
+<p>Start the editor specified by option <code class="docutils literal notranslate"><span class="pre">--editor</span></code> or the environment variables
+“VISUAL” or “EDITOR” to edit the dependency database file. This command first
+acquires a file-lock on the file, that prevents other users from accessing the
+file at the same time.  When the editor program is terminated, sumo checks if
+the file is still a valid <a class="reference external" href="http://www.json.org">JSON</a> file. If not, you can
+start the editor again or abort the program. If the file is valid
+<a class="reference external" href="http://www.json.org">JSON</a>, sumo commits the changes if option <code class="docutils literal notranslate"><span class="pre">--dbrepo</span></code>
+was specified.  If option <code class="docutils literal notranslate"><span class="pre">--logmsg</span></code> was given, this is used as commit log
+message, otherwise an editor is started where you can enter a log message.
+Finally the file lock is released. If you want to edit the dependency database
+file you should always do it with this command.</p>
+</section>
+<section id="db-extra-module-lines">
+<span id="reference-sumo-db-extra"></span><h4>db extra MODULE [LINES]<a class="headerlink" href="#db-extra-module-lines" title="Permalink to this headline"></a></h4>
+<p>Define extra lines that are appended to the generated RELEASE file of the
+<a class="reference internal" href="glossary.html#term-module"><span class="xref std std-term">module</span></a>. See also <a class="reference internal" href="#reference-sumo-extra"><span class="std std-ref">“extra”</span></a> in the chapter
+“The dependency database” of the documentation.</p>
+<p>MODULE here is a <a class="reference internal" href="glossary.html#term-modulespec"><span class="xref std std-term">modulespec</span></a> of the form MODULE:VERSION that specifies a
+single version of a module.</p>
+</section>
+<section id="db-find-regexp">
+<h4>db find REGEXP<a class="headerlink" href="#db-find-regexp" title="Permalink to this headline"></a></h4>
+<p>This command shows all <a class="reference internal" href="glossary.html#term-modules"><span class="xref std std-term">modules</span></a> whose names or <a class="reference internal" href="glossary.html#term-sources"><span class="xref std std-term">sources</span></a> match a
+regexp.  Parameter REGEXP is a perl compatible <a class="reference internal" href="glossary.html#term-regular-expression"><span class="xref std std-term">regular expression</span></a>.</p>
+</section>
+<section id="db-format">
+<h4>db format<a class="headerlink" href="#db-format" title="Permalink to this headline"></a></h4>
+<p>Just load and save the
+<a class="reference internal" href="#reference-sumo-db-the-dependency-database"><span class="std std-ref">dependency database</span></a>.
+This ensures that the file is formatted in the standard sumo format. This is
+useful when the file was edited and you want to ensure that key sort order and
+indentation are restored. If you specified a repository with <code class="docutils literal notranslate"><span class="pre">--dbrepo,</span></code> the
+command will commit the changes. If you want a log message different from “db
+format” use option <code class="docutils literal notranslate"><span class="pre">--logmsg</span></code></p>
+</section>
+<section id="db-list-modules">
+<span id="reference-sumo-db-list"></span><h4>db list MODULES<a class="headerlink" href="#db-list-modules" title="Permalink to this headline"></a></h4>
+<p>If called with no argument, list the names of all <a class="reference internal" href="glossary.html#term-modules"><span class="xref std std-term">modules</span></a>. If called
+with ‘.’, the wildcard symbol, list all <a class="reference internal" href="glossary.html#term-versions"><span class="xref std std-term">versions</span></a> of all
+<a class="reference internal" href="glossary.html#term-modules"><span class="xref std std-term">modules</span></a>. If called with argument MODULES, a list of <a class="reference internal" href="glossary.html#term-modulespecs"><span class="xref std std-term">modulespecs</span></a>
+MODULE:{+-}VERSION that specifies <a class="reference internal" href="glossary.html#term-modules"><span class="xref std std-term">modules</span></a> and <a class="reference internal" href="glossary.html#term-versions"><span class="xref std std-term">versions</span></a>, list
+all the matching <a class="reference internal" href="glossary.html#term-versions"><span class="xref std std-term">versions</span></a> of all specified <a class="reference internal" href="glossary.html#term-modules"><span class="xref std std-term">modules</span></a>.</p>
+</section>
+<section id="db-make-recipes-module-target-lines">
+<span id="reference-sumo-db-make-recipes"></span><h4>db make-recipes MODULE [TARGET] [LINES]<a class="headerlink" href="#db-make-recipes-module-target-lines" title="Permalink to this headline"></a></h4>
+<p>Define special make recipes for a <a class="reference internal" href="glossary.html#term-module"><span class="xref std std-term">module</span></a>. See also
+<a class="reference internal" href="#reference-sumo-make-recipes"><span class="std std-ref">“make-recipes”</span></a> in the chapter “The
+dependency database” of the documentation.</p>
+<p>MODULE here is a <a class="reference internal" href="glossary.html#term-modulespec"><span class="xref std std-term">modulespec</span></a> of the form MODULE:VERSION that specifies a
+single version of a module.</p>
+<p>If TARGET is given, it must be “all”, “clean”, “config” or “distclean” and
+specifies the make target for which a recipe is defined. LINES is a list of
+space separated strings. It is recommended to enclose the line strings in
+single or double quotes. If LINES is not given, all special rules for the
+TARGET are removed.</p>
+<p>If TARGET (and LINES) are not given, this defines <em>empty</em> make recipes. This
+has to be done for modules that have no makefile at all. These modules are only
+checked out by sumo, and possibly configured (see also
+<a class="reference internal" href="#reference-sumo-db-commands"><span class="std std-ref">“commands”</span></a>).</p>
+<p>Special variables and characters when you enclose LINES in double quotes:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">$DIR</span></code>: (sumo) The directory of the MODULE.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">\&quot;</span></code>: (bash) A literal double quote character.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">$(VAR)</span></code>: (make) Insert value of make or shell variable <code class="docutils literal notranslate"><span class="pre">VAR</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">$$</span></code>: (make) A dollar character passed to the shell.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">\\$$</span></code>: (make, bash) A literal dollar character passed to the shell.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">\\</span></code>: (json, bash) At the end of the json string this means line continuation for bash.</p></li>
+</ul>
+</section>
+<section id="db-merge-db">
+<h4>db merge DB<a class="headerlink" href="#db-merge-db" title="Permalink to this headline"></a></h4>
+<p>Merge the given <a class="reference internal" href="glossary.html#term-dependency-database"><span class="xref std std-term">dependency database</span></a> file with the
+<a class="reference internal" href="glossary.html#term-dependency-database"><span class="xref std std-term">dependency database</span></a> in the directory specified by <code class="docutils literal notranslate"><span class="pre">--dbdir</span></code>. Sections
+that do not exist in the original <a class="reference internal" href="glossary.html#term-dependency-database"><span class="xref std std-term">dependency database</span></a> are added.
+Contradicting sections are treated as an error and abort the program. If a
+module has an <a class="reference internal" href="#reference-sumo-extra"><span class="std std-ref">“extra”</span></a> section, only <em>new</em> lines
+are appended to the existing <a class="reference internal" href="#reference-sumo-extra"><span class="std std-ref">“extra”</span></a> section. This
+avoids having the same line several times in
+<a class="reference internal" href="#reference-sumo-extra"><span class="std std-ref">“extra”</span></a> after a merge operation.</p>
+</section>
+<section id="db-modconvert-scanfile-modules">
+<h4>db modconvert SCANFILE MODULES<a class="headerlink" href="#db-modconvert-scanfile-modules" title="Permalink to this headline"></a></h4>
+<p>Convert a <a class="reference internal" href="glossary.html#term-scanfile"><span class="xref std std-term">scanfile</span></a> that was created by applying
+<a class="reference internal" href="reference-sumo-scan.html"><span class="doc">“sumo-scan all”</span></a> to the
+<a class="reference internal" href="#reference-sumo-db-the-dependency-database"><span class="std std-ref">dependency database</span></a>
+format for all the selected modules. If SCANFILE is a dash “-” the program
+expects the scanfile on stdin.  The result is printed to the console. This data
+can be added to the dependency database using the command <a class="reference internal" href="#db-edit">db edit</a>.</p>
+</section>
+<section id="db-releasefilename-module-releasefilename">
+<h4>db releasefilename MODULE RELEASEFILENAME<a class="headerlink" href="#db-releasefilename-module-releasefilename" title="Permalink to this headline"></a></h4>
+<p>This command defines an alternative filename for the RELEASE file of the
+<a class="reference internal" href="glossary.html#term-module"><span class="xref std std-term">module</span></a>. Usually the RELEASE file is generated as “configure/RELEASE”.
+You can specify a different filename for the given <a class="reference internal" href="glossary.html#term-module"><span class="xref std std-term">module</span></a> with this
+command. This may be useful for support <a class="reference internal" href="glossary.html#term-modules"><span class="xref std std-term">modules</span></a> that have no regular
+EPICS makefile system or for some special configurations of the EPICS base. If
+you set the RELEASEFILENAME to an empty string or “configure/RELEASE”, the
+special entry for the filename is removed for this module in the
+<a class="reference internal" href="glossary.html#term-dependency-database"><span class="xref std std-term">dependency database</span></a>.</p>
+</section>
+<section id="db-replaceversion-module-old-version-new-version">
+<h4>db replaceversion MODULE OLD-VERSION NEW-VERSION<a class="headerlink" href="#db-replaceversion-module-old-version-new-version" title="Permalink to this headline"></a></h4>
+<p>This command replaces a <a class="reference internal" href="glossary.html#term-version"><span class="xref std std-term">version</span></a> of a <a class="reference internal" href="glossary.html#term-module"><span class="xref std std-term">module</span></a> with a new
+<a class="reference internal" href="glossary.html#term-version"><span class="xref std std-term">version</span></a>. MODULE here is just the name of the module since the version
+follows as a separate argument. All the data of the <a class="reference internal" href="glossary.html#term-module"><span class="xref std std-term">module</span></a> is copied.
+If sourcespec is given, the command changes the source part according to this
+parameter. A sourcespec has the form “path PATH”, “tar TARFILE”, “REPOTYPE URL”
+or “REPOTYPE URL TAG”.  REPOTYPE may be “darcs”, “hg” or “git”. Both, URL or
+TAG may be “.”, in this case the original URL or TAG remains unchanged.</p>
+</section>
+<section id="db-show-modules">
+<span id="reference-sumo-db-show"></span><h4>db show MODULES<a class="headerlink" href="#db-show-modules" title="Permalink to this headline"></a></h4>
+<p>This command prints only the parts of the dependency database that contain the
+given <a class="reference internal" href="glossary.html#term-modules"><span class="xref std std-term">modules</span></a>.</p>
+<p>Parameter MODULES is a list of <a class="reference internal" href="glossary.html#term-modulespecs"><span class="xref std std-term">modulespecs</span></a> MODULE:{+-}VERSION that
+specifies the <a class="reference internal" href="glossary.html#term-modules"><span class="xref std std-term">modules</span></a> and <a class="reference internal" href="glossary.html#term-versions"><span class="xref std std-term">versions</span></a> to operate on.</p>
+</section>
+<section id="db-weight-weight-modules">
+<h4>db weight WEIGHT MODULES<a class="headerlink" href="#db-weight-weight-modules" title="Permalink to this headline"></a></h4>
+<p>Set the weight factor for modules. A weight determines where a module is placed
+in the generated RELEASE file. Modules there are sorted first by weight, then
+by dependency. Parameter MODULES is a list of <a class="reference internal" href="glossary.html#term-modulespecs"><span class="xref std std-term">modulespecs</span></a>. Use
+modulename:{+-}versionname to select more versions of a module.</p>
+<p>Note that this command <em>does not</em> use the <code class="docutils literal notranslate"><span class="pre">--modules</span></code> command line option.</p>
+<p>Parameter WEIGHT must be an integer.</p>
+</section>
+</section>
+<section id="subcommands-for-maincommand-build">
+<h3>subcommands for maincommand “build”<a class="headerlink" href="#subcommands-for-maincommand-build" title="Permalink to this headline"></a></h3>
+<section id="build-delete-buildtags">
+<h4>build delete BUILDTAGS<a class="headerlink" href="#build-delete-buildtags" title="Permalink to this headline"></a></h4>
+<p>The directories of the <a class="reference internal" href="glossary.html#term-builds"><span class="xref std std-term">builds</span></a> are removed and their entries in the
+<a class="reference internal" href="glossary.html#term-build-database"><span class="xref std std-term">build database</span></a> are deleted. If other builds depend on the
+<a class="reference internal" href="glossary.html#term-builds"><span class="xref std std-term">builds</span></a> to be deleted, the command fails unless option ‘–recursive’ is
+given. In this case all dependent builds are deleted, too.  The
+<a class="reference internal" href="glossary.html#term-buildtags"><span class="xref std std-term">buildtags</span></a> must be given as an argument.</p>
+</section>
+<section id="build-find-modules">
+<h4>build find MODULES<a class="headerlink" href="#build-find-modules" title="Permalink to this headline"></a></h4>
+<p>This command is used to find matching <a class="reference internal" href="glossary.html#term-builds"><span class="xref std std-term">builds</span></a> for a given list of
+<a class="reference internal" href="glossary.html#term-modulespecs"><span class="xref std std-term">modulespecs</span></a>. Each module in MODULES here is a <a class="reference internal" href="glossary.html#term-modulespec"><span class="xref std std-term">modulespec</span></a> of the
+form MODULE or MODULE:{+-}VERSION that specifies just a module name, a module
+and some versions or a single version. For details on <a class="reference internal" href="glossary.html#term-modulespecs"><span class="xref std std-term">modulespecs</span></a> see
+<a class="reference internal" href="modulespecs.html"><span class="doc">Module Specifications</span></a>.</p>
+<p>With option <code class="docutils literal notranslate"><span class="pre">--brief</span></code> the command just prints <a class="reference internal" href="glossary.html#term-buildtags"><span class="xref std std-term">buildtags</span></a> of matching
+<a class="reference internal" href="glossary.html#term-builds"><span class="xref std std-term">builds</span></a>.</p>
+<p>Otherwise each <a class="reference internal" href="glossary.html#term-buildtag"><span class="xref std std-term">buildtag</span></a> is followed by a list of flags and
+<a class="reference internal" href="glossary.html#term-module"><span class="xref std std-term">module</span></a> names. Each flag indicates whether the <a class="reference internal" href="glossary.html#term-module"><span class="xref std std-term">module</span></a> was found
+with a matching <a class="reference internal" href="glossary.html#term-version"><span class="xref std std-term">version</span></a>, if it was found with a wrong <a class="reference internal" href="glossary.html#term-version"><span class="xref std std-term">version</span></a>
+or if it is missing in the <a class="reference internal" href="glossary.html#term-build"><span class="xref std std-term">build</span></a>.</p>
+<p>If option <code class="docutils literal notranslate"><span class="pre">--all-builds</span></code> is given, builds whose <a class="reference internal" href="glossary.html#term-state"><span class="xref std std-term">state</span></a> is not ‘stable’
+or ‘testing’ are also shown.</p>
+<p>Options <code class="docutils literal notranslate"><span class="pre">--sort-build-dependencies-first</span></code> and
+<code class="docutils literal notranslate"><span class="pre">--sort-build-dependencies-last</span></code> can be used to change the order reported
+builds. Without these options, <a class="reference internal" href="glossary.html#term-builds"><span class="xref std std-term">builds</span></a> are sorted by <em>match rank</em>.
+Builds that have more <a class="reference internal" href="glossary.html#term-modules"><span class="xref std std-term">modules</span></a> with matching <a class="reference internal" href="glossary.html#term-versions"><span class="xref std std-term">versions</span></a> are placed
+first, followed by the ones with more wrong <a class="reference internal" href="glossary.html#term-versions"><span class="xref std std-term">versions</span></a> followed by the
+ones with more missing <a class="reference internal" href="glossary.html#term-versions"><span class="xref std std-term">versions</span></a>.</p>
+<p>Option <code class="docutils literal notranslate"><span class="pre">--detail</span></code> determines, what is shown. This must be an integer between
+0 and 2. With <code class="docutils literal notranslate"><span class="pre">0</span></code>, the default, only <a class="reference internal" href="glossary.html#term-builds"><span class="xref std std-term">builds</span></a> with matching
+<a class="reference internal" href="glossary.html#term-module"><span class="xref std std-term">module</span></a> <a class="reference internal" href="glossary.html#term-versions"><span class="xref std std-term">versions</span></a> are shown. With <code class="docutils literal notranslate"><span class="pre">1</span></code>, also <a class="reference internal" href="glossary.html#term-builds"><span class="xref std std-term">builds</span></a> with
+wrong <a class="reference internal" href="glossary.html#term-versions"><span class="xref std std-term">versions</span></a> are shown and with <code class="docutils literal notranslate"><span class="pre">2</span></code> even <a class="reference internal" href="glossary.html#term-builds"><span class="xref std std-term">builds</span></a> with
+missing <a class="reference internal" href="glossary.html#term-modules"><span class="xref std std-term">modules</span></a> are shown.</p>
+<p>This is the meaning of the <em>flags</em> in the output of this command:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">==</span></code>: The <a class="reference internal" href="glossary.html#term-module"><span class="xref std std-term">module</span></a> <a class="reference internal" href="glossary.html#term-version"><span class="xref std std-term">version</span></a> matches exactly.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">=~</span></code>: The <a class="reference internal" href="glossary.html#term-module"><span class="xref std std-term">module</span></a> <a class="reference internal" href="glossary.html#term-version"><span class="xref std std-term">version</span></a> matches the module specification.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">!=</span></code>: The <a class="reference internal" href="glossary.html#term-module"><span class="xref std std-term">module</span></a> has the wrong <a class="reference internal" href="glossary.html#term-version"><span class="xref std std-term">version</span></a>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">-</span></code>: The <a class="reference internal" href="glossary.html#term-module"><span class="xref std std-term">module</span></a> is missing in the <a class="reference internal" href="glossary.html#term-build"><span class="xref std std-term">build</span></a>.</p></li>
+</ul>
+<p>Here is an example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>$ sumo build find MCAN ALARM:R3-7 --detail 1:
+MYAPP-002
+    == ALARM:R3-7
+    =~ MCAN:R2-6-3-gp
+MYAPP-001
+    != ALARM:R3-8-modified
+    =~ MCAN:R2-6-3-gp
+</pre></div>
+</div>
+<p>We wanted <em>any</em> version of <cite>MCAN</cite> and version <cite>R3-7</cite> of <cite>ALARM</cite>. The command
+found two builds, <cite>MYAPP-002</cite> and <cite>MYAPP-001</cite>.</p>
+<p>In <cite>MYAPP-002</cite>, <cite>ALARM</cite> matches exactly the version we wanted, <cite>MCAN</cite> matches
+our specification since we didn’t define a version.</p>
+<p>In <cite>MYAPP-001</cite>, <cite>ALARM</cite> has not the <a class="reference internal" href="glossary.html#term-version"><span class="xref std std-term">version</span></a> we specified, but this
+<a class="reference internal" href="glossary.html#term-build"><span class="xref std std-term">build</span></a> is reported anyway since we used <code class="docutils literal notranslate"><span class="pre">--detail</span> <span class="pre">1</span></code>. <cite>MCAN</cite> matches
+our specification since we didn’t define a version.</p>
+<p>Finally, if the command <code class="docutils literal notranslate"><span class="pre">sumo</span> <span class="pre">build</span> <span class="pre">use</span></code> doesn’t find a build for your module
+specifications, you may want to run <code class="docutils literal notranslate"><span class="pre">sumo</span> <span class="pre">build</span> <span class="pre">find</span> <span class="pre">--detail</span> <span class="pre">1</span></code> or <code class="docutils literal notranslate"><span class="pre">sumo</span>
+<span class="pre">build</span> <span class="pre">find</span> <span class="pre">--detail</span> <span class="pre">2</span></code>. This may help you finding errors in your module
+specification in file <cite>configure/MODULES</cite>.</p>
+</section>
+<section id="build-getmodules-buildtag-modules">
+<span id="reference-sumo-build-getmodules"></span><h4>build getmodules BUILDTAG [MODULES]<a class="headerlink" href="#build-getmodules-buildtag-modules" title="Permalink to this headline"></a></h4>
+<p>This command shows the modules in the form MODULE:VERSION of a <a class="reference internal" href="glossary.html#term-build"><span class="xref std std-term">build</span></a>.</p>
+<p>The <a class="reference internal" href="glossary.html#term-buildtag"><span class="xref std std-term">buildtag</span></a> is mandatory.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Sumo doesn’t distinguish between modules defined on the command line or in
+configuration files like <cite>configure/MODULES</cite>. If modules <em>are somewhere</em>
+defined, they will be used by this command.</p>
+</div>
+<p>If <a class="reference internal" href="glossary.html#term-modules"><span class="xref std std-term">modules</span></a> are specified, only these modules and
+their dependent modules with the versions from the specified build are shown.
+If the build doesn’t contain all the requested modules, sumo stops with an
+error message.</p>
+<p>With option <code class="docutils literal notranslate"><span class="pre">--lines</span></code> for each build the output is a single line instead of a
+number of indented lines. In this case, the output is compatible with the
+<code class="docutils literal notranslate"><span class="pre">-m</span></code> option of sumo.</p>
+<p>Here are some applications for this, please look also at <a class="reference internal" href="#reference-config-make"><span class="std std-ref">“config make</span></a> with option <code class="docutils literal notranslate"><span class="pre">--getmodules</span></code> which does the same:</p>
+<p>If configure/MODULES does not yet exist, create a matching MODULES file for
+build ‘AUTO-004’ for an application:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sumo</span> <span class="n">config</span> <span class="n">make</span> <span class="n">configure</span><span class="o">/</span><span class="n">MODULES</span> <span class="n">alias</span> <span class="n">module</span> <span class="o">-</span><span class="n">m</span> <span class="s2">&quot;$(sumo build getmodules AUTO-004 --lines)&quot;</span>
+</pre></div>
+</div>
+<p>If configure/MODULES already exists (and is automatically loaded, see also
+<a class="reference internal" href="configuration-files.html#configuration-files-config-examples"><span class="std std-ref">sumo.config examples</span></a>), update
+versions in MODULES file from the versions used in build ‘AUTO-004’:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sumo</span> <span class="n">config</span> <span class="n">make</span> <span class="n">configure</span><span class="o">/</span><span class="n">MODULES</span> <span class="n">alias</span> <span class="n">module</span> <span class="o">-</span><span class="n">m</span> <span class="s2">&quot;$(sumo build getmodules AUTO-004 --lines)&quot;</span>
+</pre></div>
+</div>
+</section>
+<section id="build-list">
+<span id="reference-sumo-build-list"></span><h4>build list<a class="headerlink" href="#build-list" title="Permalink to this headline"></a></h4>
+<p>This command lists the names of all builds. Options
+<code class="docutils literal notranslate"><span class="pre">--sort-build-dependencies-first</span></code> and <code class="docutils literal notranslate"><span class="pre">--sort-build-dependencies-last</span></code> can
+be used to change the order of the builds shown. The command shows only builds
+with state ‘stable’ or ‘testing’ unless option <code class="docutils literal notranslate"><span class="pre">--all-builds</span></code> is provided.</p>
+</section>
+<section id="build-new-modules">
+<span id="reference-sumo-new"></span><h4>build new MODULES<a class="headerlink" href="#build-new-modules" title="Permalink to this headline"></a></h4>
+<p>This command creates a new <a class="reference internal" href="glossary.html#term-build"><span class="xref std std-term">build</span></a>. Each module given in MODULES here is
+a <a class="reference internal" href="glossary.html#term-modulespec"><span class="xref std std-term">modulespec</span></a> of the form MODULE:VERSION that specifies a single version
+of a module. If a build for the given <a class="reference internal" href="glossary.html#term-modulespecs"><span class="xref std std-term">modulespecs</span></a> already exists, the
+command aborts with an error message, or terminates with a warning if option
+<code class="docutils literal notranslate"><span class="pre">--no-err-build-exists</span></code> is given.  If the <a class="reference internal" href="glossary.html#term-buildtag"><span class="xref std std-term">buildtag</span></a> is not given as an
+option, the program generates a <a class="reference internal" href="glossary.html#term-buildtag"><span class="xref std std-term">buildtag</span></a> in the form “AUTO-nnn”. A new
+<a class="reference internal" href="glossary.html#term-build"><span class="xref std std-term">build</span></a> is created according to the <a class="reference internal" href="glossary.html#term-modulespecs"><span class="xref std std-term">modulespecs</span></a>. Your
+module specifications must be <em>complete</em> and <em>exact</em> meaning that all
+<a class="reference internal" href="glossary.html#term-dependencies"><span class="xref std std-term">dependencies</span></a> are included and all <a class="reference internal" href="glossary.html#term-modules"><span class="xref std std-term">modules</span></a> are specified with
+exactly a single <a class="reference internal" href="glossary.html#term-version"><span class="xref std std-term">version</span></a>. Use command “build try” in order to create
+<a class="reference internal" href="glossary.html#term-module"><span class="xref std std-term">module</span></a> specifications that can be used with command “build new”.  This
+command calls “make” and, after successful completion, sets the state of the
+<a class="reference internal" href="glossary.html#term-build"><span class="xref std std-term">build</span></a> to “testing”. If you want to skip this step, use option
+<code class="docutils literal notranslate"><span class="pre">--no-make</span></code>. In order to provide arbitrary options to make use option
+<code class="docutils literal notranslate"><span class="pre">--makeflags</span></code>.</p>
+</section>
+<section id="build-remake-buildtag">
+<h4>build remake BUILDTAG<a class="headerlink" href="#build-remake-buildtag" title="Permalink to this headline"></a></h4>
+<p>This command recreates a <a class="reference internal" href="glossary.html#term-build"><span class="xref std std-term">build</span></a> by first calling “make clean” and
+then “make all” with the build’s makefile. If you develop a support
+<a class="reference internal" href="glossary.html#term-module"><span class="xref std std-term">module</span></a> (see also “config standalone” and “config local”) you want to
+recompile the <a class="reference internal" href="glossary.html#term-build"><span class="xref std std-term">build</span></a> after changes in the sources. In order to provide
+arbitrary options to make use option <code class="docutils literal notranslate"><span class="pre">--makeflags</span></code>.</p>
+</section>
+<section id="build-show-buildtag">
+<span id="reference-sumo-build-show"></span><h4>build show BUILDTAG<a class="headerlink" href="#build-show-buildtag" title="Permalink to this headline"></a></h4>
+<p>This command shows the data of a <a class="reference internal" href="glossary.html#term-build"><span class="xref std std-term">build</span></a>. The <a class="reference internal" href="glossary.html#term-buildtag"><span class="xref std std-term">buildtag</span></a> must be
+given as an argument.</p>
+</section>
+<section id="build-showmodules-buildtag">
+<h4>build showmodules [BUILDTAG]<a class="headerlink" href="#build-showmodules-buildtag" title="Permalink to this headline"></a></h4>
+<p>This command shows the modules in the form MODULE:VERSION of a <a class="reference internal" href="glossary.html#term-build"><span class="xref std std-term">build</span></a>.</p>
+<p>The <a class="reference internal" href="glossary.html#term-buildtag"><span class="xref std std-term">buildtag</span></a> is optional if <a class="reference internal" href="glossary.html#term-modules"><span class="xref std std-term">modules</span></a> are also not specified.</p>
+<p>Without a <a class="reference internal" href="glossary.html#term-buildtag"><span class="xref std std-term">buildtag</span></a>, the command shows the modules for all builds with
+state ‘stable’ or ‘testing’. To see all builds regardless of their state use
+option <code class="docutils literal notranslate"><span class="pre">--all-builds</span></code>.</p>
+<p>Options <code class="docutils literal notranslate"><span class="pre">--sort-build-dependencies-first</span></code> and
+<code class="docutils literal notranslate"><span class="pre">--sort-build-dependencies-last</span></code> can be used to change the order reported
+builds.</p>
+<p>With option <code class="docutils literal notranslate"><span class="pre">--lines</span></code> for each build the output is a single line instead of a
+number of indented lines. With <code class="docutils literal notranslate"><span class="pre">-b</span></code>, the build name is not printed. If you
+use <code class="docutils literal notranslate"><span class="pre">--lines</span></code> and <code class="docutils literal notranslate"><span class="pre">-b</span></code>, the output is compatible with the <code class="docutils literal notranslate"><span class="pre">-m</span></code> option of
+sumo. Here are some applications for this:</p>
+<p>If configure/MODULES does not yet exist, create a matching MODULES file for
+build ‘AUTO-004’ for an application:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">sumo</span> <span class="n">config</span> <span class="n">make</span> <span class="n">configure</span><span class="o">/</span><span class="n">MODULES</span> <span class="n">alias</span> <span class="n">module</span> <span class="o">-</span><span class="n">m</span> <span class="s2">&quot;$(sumo build showmodules AUTO-004 --lines -b)&quot;</span>
+</pre></div>
+</div>
+<p>Re-create a complete set of builds from an existing BUILDS.DB on a different
+machine:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>[machine 1] $ sumo build showmodules --lines -b --sort-build-dependencies-first &gt;  BUILDS.TXT
+
+[machine 2] $ cat BUILDS.TXT | while read line; do sumo build new -m &quot;$line&quot;; done
+</pre></div>
+</div>
+</section>
+<section id="build-showdependencies-buildtag">
+<h4>build showdependencies [BUILDTAG]<a class="headerlink" href="#build-showdependencies-buildtag" title="Permalink to this headline"></a></h4>
+<p>This command shows the builds that the given <a class="reference internal" href="glossary.html#term-build"><span class="xref std std-term">build</span></a> depends on. The
+<a class="reference internal" href="glossary.html#term-buildtag"><span class="xref std std-term">buildtag</span></a> is optional, if omitted the command shows the dependencies for
+all builds with state ‘stable’ or ‘testing’. To see all builds regardless of
+their state use option <code class="docutils literal notranslate"><span class="pre">--all-builds</span></code>.</p>
+<p>Options
+<code class="docutils literal notranslate"><span class="pre">--sort-build-dependencies-first</span></code> and <code class="docutils literal notranslate"><span class="pre">--sort-build-dependencies-last</span></code>
+can be used to change the order reported dependencies.</p>
+</section>
+<section id="build-showdependents-buildtag">
+<h4>build showdependents [BUILDTAG]<a class="headerlink" href="#build-showdependents-buildtag" title="Permalink to this headline"></a></h4>
+<p>This command shows all builds that depend on the given <a class="reference internal" href="glossary.html#term-build"><span class="xref std std-term">build</span></a>.  The
+<a class="reference internal" href="glossary.html#term-buildtag"><span class="xref std std-term">buildtag</span></a> is optional, if omitted the command shows the dependents for
+all builds with state ‘stable’ or ‘testing’. To see all builds regardless of
+their state use option <code class="docutils literal notranslate"><span class="pre">--all-builds</span></code>.</p>
+<p>Options
+<code class="docutils literal notranslate"><span class="pre">--sort-build-dependencies-first</span></code> and <code class="docutils literal notranslate"><span class="pre">--sort-build-dependencies-last</span></code>
+can be used to change the order reported dependents.</p>
+</section>
+<section id="build-state-buildtag-new-state">
+<h4>build state BUILDTAG [NEW-STATE]<a class="headerlink" href="#build-state-buildtag-new-state" title="Permalink to this headline"></a></h4>
+<p>This command is used to show or change the <a class="reference internal" href="glossary.html#term-state"><span class="xref std std-term">state</span></a> of a <a class="reference internal" href="glossary.html#term-build"><span class="xref std std-term">build</span></a>.
+The <a class="reference internal" href="glossary.html#term-buildtag"><span class="xref std std-term">buildtag</span></a> must be given as an argument. If there is no new
+<a class="reference internal" href="glossary.html#term-state"><span class="xref std std-term">state</span></a> given, it just shows the current <a class="reference internal" href="glossary.html#term-state"><span class="xref std std-term">state</span></a> of the
+<a class="reference internal" href="glossary.html#term-build"><span class="xref std std-term">build</span></a>. Otherwise the <a class="reference internal" href="glossary.html#term-state"><span class="xref std std-term">state</span></a> of the <a class="reference internal" href="glossary.html#term-build"><span class="xref std std-term">build</span></a> is changed to
+the given value. If a <a class="reference internal" href="glossary.html#term-build"><span class="xref std std-term">build</span></a> is set to <a class="reference internal" href="glossary.html#term-state"><span class="xref std std-term">state</span></a> ‘disabled’, all
+dependent builds are also set to this <a class="reference internal" href="glossary.html#term-state"><span class="xref std std-term">state</span></a>. In this case, unless
+option ‘-y’ or ‘–recursive’ are given, sumo asks for your confirmation.</p>
+</section>
+<section id="build-try-modules">
+<h4>build try MODULES<a class="headerlink" href="#build-try-modules" title="Permalink to this headline"></a></h4>
+<p>This command is intended to help you create <a class="reference internal" href="glossary.html#term-module"><span class="xref std std-term">module</span></a> specifications for
+the “build new” command.</p>
+<p>Each MODULE here is a <a class="reference internal" href="glossary.html#term-modulespec"><span class="xref std std-term">modulespec</span></a> of the form MODULE or
+MODULE:{+-}VERSION that specifies just a module name, a module and some
+versions or a single version. You can specify an incomplete list of
+<a class="reference internal" href="glossary.html#term-modules"><span class="xref std std-term">modules</span></a>.</p>
+<p>The detail of the output is determined by option <code class="docutils literal notranslate"><span class="pre">--detail</span></code> which is an
+integer between 0 and 3. 0, the default, gives the shortest, 3 gives the
+longest report. The program then shows which <a class="reference internal" href="glossary.html#term-modules"><span class="xref std std-term">modules</span></a> you have to</p>
+<p>In any case the command shows which <a class="reference internal" href="glossary.html#term-modules"><span class="xref std std-term">modules</span></a> are missing since they
+depend on other <a class="reference internal" href="glossary.html#term-modules"><span class="xref std std-term">modules</span></a> of your specification and which ones are
+missing an exact <a class="reference internal" href="glossary.html#term-version"><span class="xref std std-term">version</span></a>.</p>
+<p>If you converted an existing support directory to sumo you have a scan database
+file which you can specify with option <code class="docutils literal notranslate"><span class="pre">--scandb</span></code> to this command.</p>
+<p>For a detailed example see <a class="reference internal" href="example-sumo-build-try.html#example-sumo-build-try"><span class="std std-ref">try example</span></a>.</p>
+</section>
+<section id="build-use-modules">
+<span id="reference-sumo-use"></span><h4>build use MODULES<a class="headerlink" href="#build-use-modules" title="Permalink to this headline"></a></h4>
+<p>This command creates a configure/RELEASE file for an application. Each module
+given in MODULES here is a <a class="reference internal" href="glossary.html#term-modulespec"><span class="xref std std-term">modulespec</span></a> of the form MODULE:VERSION that
+specifies a single version of a module. If option <code class="docutils literal notranslate"><span class="pre">--buildtag</span></code> is given, it
+checks if this is compatible with the given <a class="reference internal" href="glossary.html#term-modules"><span class="xref std std-term">modules</span></a>.  Otherwise it
+looks for all <a class="reference internal" href="glossary.html#term-builds"><span class="xref std std-term">builds</span></a> that have the <a class="reference internal" href="glossary.html#term-modules"><span class="xref std std-term">modules</span></a> in the required
+<a class="reference internal" href="glossary.html#term-versions"><span class="xref std std-term">versions</span></a>. If more than one matching <a class="reference internal" href="glossary.html#term-build"><span class="xref std std-term">build</span></a> found it takes the
+one with the alphabetically first buildtag. The RELEASE file created includes
+only the <a class="reference internal" href="glossary.html#term-modules"><span class="xref std std-term">modules</span></a> that are specified. Output to another file or the
+console can be specified with option ‘-o’.</p>
+<p>If no <a class="reference internal" href="glossary.html#term-build"><span class="xref std std-term">build</span></a> is found you may:</p>
+<ul class="simple">
+<li><p>Look if you module specification has an error by looking for <em>almost</em>
+matching <a class="reference internal" href="glossary.html#term-builds"><span class="xref std std-term">builds</span></a> with:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">sumo</span> <span class="pre">build</span> <span class="pre">find</span> <span class="pre">--detail</span> <span class="pre">1</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">sumo</span> <span class="pre">build</span> <span class="pre">find</span> <span class="pre">--detail</span> <span class="pre">2</span></code></p></li>
+</ul>
+</li>
+<li><p>Create a <a class="reference internal" href="glossary.html#term-build"><span class="xref std std-term">build</span></a> matching your <a class="reference internal" href="glossary.html#term-module"><span class="xref std std-term">module</span></a> specification with:</p>
+<ul>
+<li><p><code class="docutils literal notranslate"><span class="pre">sumo</span> <span class="pre">build</span> <span class="pre">new</span></code></p></li>
+</ul>
+</li>
+</ul>
+</section>
+</section>
+</section>
+<section id="command-completion">
+<span id="reference-sumo-command-completion"></span><h2>Command completion<a class="headerlink" href="#command-completion" title="Permalink to this headline"></a></h2>
+<p>Command completion means that you can press &lt;TAB&gt; on any incomplete sumo
+command and you get a list of possibilities how to complete that command. By
+pressing &lt;TAB&gt; several times you can try each possible completion.</p>
+<section id="prerequisites">
+<h3>Prerequisites<a class="headerlink" href="#prerequisites" title="Permalink to this headline"></a></h3>
+<p>Command completion works with <cite>bash</cite> or <cite>zsh</cite> (Z-Shell), you need to have one
+of these installed. Your environment variable <cite>SHELL</cite> must be set to the binary
+file of the shell, e.g. <cite>/usr/bin/bash</cite> or <cite>/usr/bin/zsh</cite>.</p>
+<p>In any case the package <cite>bash-completion</cite> must be installed.</p>
+<p>If you use the Z-Shell, the following commands must be executed at start up.
+Add them for example to the file <cite>$HOME/.zshenv</cite>:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">autoload</span> <span class="o">-</span><span class="n">U</span> <span class="o">+</span><span class="n">X</span> <span class="n">compinit</span> <span class="o">&amp;&amp;</span> <span class="n">compinit</span>
+<span class="n">autoload</span> <span class="o">-</span><span class="n">U</span> <span class="o">+</span><span class="n">X</span> <span class="n">bashcompinit</span> <span class="o">&amp;&amp;</span> <span class="n">bashcompinit</span>
+</pre></div>
+</div>
+<p>There are two ways to activate command completion, described in the following
+chapters.</p>
+</section>
+<section id="activate-command-completion-on-the-fly">
+<h3>Activate command completion on the fly<a class="headerlink" href="#activate-command-completion-on-the-fly" title="Permalink to this headline"></a></h3>
+<p>Enter this command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>``eval `sumo help completion-line```
+</pre></div>
+</div>
+</section>
+<section id="activate-command-completion-permanently">
+<h3>Activate command completion permanently<a class="headerlink" href="#activate-command-completion-permanently" title="Permalink to this headline"></a></h3>
+<p>Enter this command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>``sumo help completion-script &gt; $HOME/_sumo``
+</pre></div>
+</div>
+<p>Then add the line:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>``source $HOME/_sumo``
+</pre></div>
+</div>
+<p>to your $HOME/.bashrc or $HOME/.zshrc</p>
+</section>
+<section id="completion-cache-files">
+<h3>Completion cache files<a class="headerlink" href="#completion-cache-files" title="Permalink to this headline"></a></h3>
+<p>Sumo will create cache files in your home directory to speed up command
+completion. These are the files “.dbcache.sumo” and “.buildcache.sumo”. If you
+don’t want this set the environment variable “SUMOHELP” in a way that it
+contains the string “nocache” like in:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">export</span> <span class="n">SUMOHELP</span><span class="o">=</span><span class="s2">&quot;nocache&quot;</span>
+</pre></div>
+</div>
+<p>If there are other help options defined in SUMOHELP, you should separate them
+with commas “,”.</p>
+</section>
+</section>
+<section id="the-help-pager">
+<h2>The help pager<a class="headerlink" href="#the-help-pager" title="Permalink to this headline"></a></h2>
+<p>The build in pager allows you to navigate in long help texts that sumo displays
+when you use command “help” or option “-h”. There are three modes:</p>
+<dl class="simple">
+<dt>pager:off</dt><dd><p>The pager is off, all help is printed directly to the console.</p>
+</dd>
+<dt>pager:on</dt><dd><p>The pager is used only for long help texts (more than 24 lines).</p>
+</dd>
+<dt>pager:always</dt><dd><p>The pager is always used, even for short help texts.</p>
+</dd>
+</dl>
+<p>Mode “pager:on” is the default.</p>
+<p>You define the pager mode by adding one of the three strings to the environment
+variable “SUMOHELP” like in:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">export</span> <span class="n">SUMOHELP</span><span class="o">=</span><span class="s2">&quot;pager:off&quot;</span>
+</pre></div>
+</div>
+<p>If there are other help options defined in SUMOHELP, you should separate them
+with commas “,”.</p>
+</section>
+<section id="options">
+<h2>Options<a class="headerlink" href="#options" title="Permalink to this headline"></a></h2>
+<p id="reference-sumo-options">Here is a short overview on command line options:</p>
+<section id="opt-postload-files">
+<h3><code class="docutils literal notranslate"><span class="pre">--#opt-postload</span> <span class="pre">FILES</span></code><a class="headerlink" href="#opt-postload-files" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>This option does the same as –#postload but the file loading is optional.
+If they do not exist the program continues without an error.</p>
+</div></blockquote>
+</section>
+<section id="opt-preload-files">
+<h3><code class="docutils literal notranslate"><span class="pre">--#opt-preload</span> <span class="pre">FILES</span></code><a class="headerlink" href="#opt-preload-files" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>This option does the same as –#preload but the file loading is optional.
+If they do not exist the program continues without an error.</p>
+</div></blockquote>
+</section>
+<section id="postload-files">
+<h3><code class="docutils literal notranslate"><span class="pre">--#postload</span> <span class="pre">FILES</span></code><a class="headerlink" href="#postload-files" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>Specify a an ‘#postload’ directive in the configuration file. This option
+has only a meaning if a configuration file is created with the ‘makeconfig’
+command. ‘#postload’ means that the following file(s) are loaded after the
+rest of the configuration file.</p>
+</div></blockquote>
+</section>
+<section id="preload-files">
+<h3><code class="docutils literal notranslate"><span class="pre">--#preload</span> <span class="pre">FILES</span></code><a class="headerlink" href="#preload-files" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>Specify a an ‘#preload’ directive in the configuration file. This option
+has only a meaning if a configuration file is created with the ‘makeconfig’
+command. ‘#preload’ means that the following file(s) are loaded before the
+rest of the configuration file.</p>
+</div></blockquote>
+</section>
+<section id="a-alias-alias-alias">
+<h3><code class="docutils literal notranslate"><span class="pre">-a</span> <span class="pre">ALIAS,</span> <span class="pre">--alias</span> <span class="pre">ALIAS</span></code><a class="headerlink" href="#a-alias-alias-alias" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>Define an alias for the command ‘use’. An alias must have the form FROM:TO.
+The path of module named ‘FROM’ is put in the generated RELEASE file as a
+variable named ‘TO’. You can specify more than one of these by repeating
+this option or by joining values in a single string separated by spaces. A
+default for this option can be put in a configuration file.</p>
+</div></blockquote>
+</section>
+<section id="all-builds">
+<h3><code class="docutils literal notranslate"><span class="pre">--all-builds</span></code><a class="headerlink" href="#all-builds" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>Some subcommands of ‘build’ show only information for builds that have the
+states ‘stable’ or ‘testing’. If this option is given, the commands show
+<em>all</em> builds regardless of their state.</p>
+</div></blockquote>
+</section>
+<section id="a-append-optionname">
+<h3><code class="docutils literal notranslate"><span class="pre">-A,</span> <span class="pre">--append</span> <span class="pre">OPTIONNAME</span></code><a class="headerlink" href="#a-append-optionname" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>If an option with name OPTIONNAME is given here and it is a list option,
+the list from the command line is <em>appended</em> to the list from the
+configuration file. The default is that options from the command line
+<em>override</em> option values from the configuration file.</p>
+</div></blockquote>
+</section>
+<section id="b-brief">
+<h3><code class="docutils literal notranslate"><span class="pre">-b,</span> <span class="pre">--brief</span></code><a class="headerlink" href="#b-brief" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>Create a more brief output for some commands.</p>
+</div></blockquote>
+</section>
+<section id="builddir-builddir">
+<h3><code class="docutils literal notranslate"><span class="pre">--builddir</span> <span class="pre">BUILDDIR</span></code><a class="headerlink" href="#builddir-builddir" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>Specify the support directory. If this option is not given take the current
+working directory as support directory. A default for this option can be
+put in a configuration file.</p>
+</div></blockquote>
+</section>
+<section id="t-buildtag-buildtag-buildtag">
+<h3><code class="docutils literal notranslate"><span class="pre">-t</span> <span class="pre">BUILDTAG,</span> <span class="pre">--buildtag</span> <span class="pre">BUILDTAG</span></code><a class="headerlink" href="#t-buildtag-buildtag-buildtag" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>Specify a buildtag.</p>
+</div></blockquote>
+</section>
+<section id="buildtag-stem-stem">
+<h3><code class="docutils literal notranslate"><span class="pre">--buildtag-stem</span> <span class="pre">STEM</span></code><a class="headerlink" href="#buildtag-stem-stem" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>Specify the stem of a buildtag. This option has only an effect on the
+commands ‘build new’ and ‘build try’ if a buildtag is not specified. The
+program generates a new tag in the form ‘stem-nnn’ where ‘nnn’ is the
+smallest possible number that ensures that the buildtag is unique.</p>
+</div></blockquote>
+</section>
+<section id="c-file-config-file">
+<h3><code class="docutils literal notranslate"><span class="pre">-c</span> <span class="pre">FILE,</span> <span class="pre">--config</span> <span class="pre">FILE</span></code><a class="headerlink" href="#c-file-config-file" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>Load options from the given configuration file. You can specify more than
+one of these.  Unless –no-default-config is given, the program always
+loads configuration files from several standard directories first before it
+loads your configuration file. The contents of all configuration files are
+merged.</p>
+</div></blockquote>
+</section>
+<section id="dbdir-dbdir">
+<span id="reference-sumo-options-dbdir"></span><h3><code class="docutils literal notranslate"><span class="pre">--dbdir</span> <span class="pre">DBDIR</span></code><a class="headerlink" href="#dbdir-dbdir" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>Define the directory where the dependency database file ‘DEPS.DB’ is found.
+A default for this option can be put in a configuration file.</p>
+</div></blockquote>
+</section>
+<section id="dbrepo-repository">
+<span id="reference-sumo-options-dbrepo"></span><h3><code class="docutils literal notranslate"><span class="pre">--dbrepo</span> <span class="pre">REPOSITORY</span></code><a class="headerlink" href="#dbrepo-repository" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>Define a REPOSITORY for the db file. REPOSITORY must have the form
+‘REPOTYPE URL’ or ‘type=REPOTYPE url=URL”. REPOTYPE may be ‘darcs’, ‘hg’,
+‘git’, ‘svn’ or ‘cvs’. Option <a class="reference internal" href="#reference-sumo-options-dbdir"><span class="std std-ref">–dbdir</span></a>.
+must specify a directory that will
+contain the repository for the db file. What repository operations sumo performs
+when it reads or writes the db file depends on option
+<a class="reference internal" href="#reference-sumo-options-dbrepomode"><span class="std std-ref">–dbrepomode</span></a>.
+A default for this option can be put in a configuration file.</p>
+</div></blockquote>
+</section>
+<section id="dbrepomode-mode">
+<span id="reference-sumo-options-dbrepomode"></span><h3><code class="docutils literal notranslate"><span class="pre">--dbrepomode</span> <span class="pre">MODE</span></code><a class="headerlink" href="#dbrepomode-mode" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>Specify how sumo should use the dependency database repository. There are
+three possible values: ‘get’, ‘pull’ and ‘push’. Mode ‘get’ is the default.
+The meaning depends on the used version control system (VCS), if it is
+distributed (git,mercurial,darcs) or centralized (subversion,cvs). There
+are three possible operations on the dependency database:</p>
+<blockquote>
+<div><ul class="simple">
+<li><p>init : create the dependency database if it doesn’t exist</p></li>
+<li><p>read : read the dependency database</p></li>
+<li><p>write: write (change) the dependency database</p></li>
+</ul>
+</div></blockquote>
+<p>Here is what happens during these operations depending on the mode:</p>
+<table class="docutils align-default">
+<colgroup>
+<col style="width: 10%" />
+<col style="width: 17%" />
+<col style="width: 73%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>mode</p></th>
+<th class="head"><p>operation</p></th>
+<th class="head"><p>action</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td rowspan="4"><p>get</p></td>
+<td><p>init</p></td>
+<td><p>create the repository if it doesn’t exist</p></td>
+</tr>
+<tr class="row-odd"><td><p>read</p></td>
+<td><p>none</p></td>
+</tr>
+<tr class="row-even"><td rowspan="2"><p>write</p></td>
+<td><p>distr. VCS: commit changes</p></td>
+</tr>
+<tr class="row-odd"><td><p>centr. VCS: none</p></td>
+</tr>
+<tr class="row-even"><td rowspan="5"><p>pull</p></td>
+<td><p>init</p></td>
+<td><p>create the repository if it doesn’t exist</p></td>
+</tr>
+<tr class="row-odd"><td rowspan="2"><p>read</p></td>
+<td><p>distr. VCS: pull</p></td>
+</tr>
+<tr class="row-even"><td><p>centr. VCS: update</p></td>
+</tr>
+<tr class="row-odd"><td rowspan="2"><p>write</p></td>
+<td><p>distr. VCS: commit changes</p></td>
+</tr>
+<tr class="row-even"><td><p>centr. VCS: none</p></td>
+</tr>
+<tr class="row-odd"><td rowspan="5"><p>push</p></td>
+<td><p>init</p></td>
+<td><p>create the repository if it doesn’t exist</p></td>
+</tr>
+<tr class="row-even"><td rowspan="2"><p>read</p></td>
+<td><p>distr. VCS: pull</p></td>
+</tr>
+<tr class="row-odd"><td><p>centr. VCS: update</p></td>
+</tr>
+<tr class="row-even"><td rowspan="2"><p>write</p></td>
+<td><p>distr. VCS: pull, commit changes, push</p></td>
+</tr>
+<tr class="row-odd"><td><p>centr. VCS: update, commit changes</p></td>
+</tr>
+</tbody>
+</table>
+</div></blockquote>
+</section>
+<section id="detail-no">
+<h3><code class="docutils literal notranslate"><span class="pre">--detail</span> <span class="pre">NO</span></code><a class="headerlink" href="#detail-no" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>Control the output of command ‘try’. The value must be an integer between 0
+(very short) and 3 (very long).”</p>
+</div></blockquote>
+</section>
+<section id="d-expression-dir-patch-expression">
+<h3><code class="docutils literal notranslate"><span class="pre">-D</span> <span class="pre">EXPRESSION,</span> <span class="pre">--dir-patch</span> <span class="pre">EXPRESSION</span></code><a class="headerlink" href="#d-expression-dir-patch-expression" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>This option is used for commands <code class="docutils literal notranslate"><span class="pre">db</span> <span class="pre">convert</span></code> and <code class="docutils literal notranslate"><span class="pre">db</span> <span class="pre">modconvert</span></code>. It
+specifies a directory patchexpression. Such an expression consists of a
+tuple of 2 python strings. The first is the match expression, the second
+one is the replacement string. The regular expression is applied to every
+source path generated. You can specify more than one patchexpression. A
+default for this option can be put in a configuration file.</p>
+</div></blockquote>
+</section>
+<section id="disable-loading">
+<span id="reference-sumo-disable-loading"></span><h3><code class="docutils literal notranslate"><span class="pre">--disable-loading</span></code><a class="headerlink" href="#disable-loading" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>If given, disable execution of load commands like ‘#preload’ in
+configuration files. In this case these keys are treated like ordinary
+keys.</p>
+</div></blockquote>
+</section>
+<section id="n-dry-run">
+<h3><code class="docutils literal notranslate"><span class="pre">-n,</span> <span class="pre">--dry-run</span></code><a class="headerlink" href="#n-dry-run" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>Just show what the program would do.</p>
+</div></blockquote>
+</section>
+<section id="dump-modules">
+<h3><code class="docutils literal notranslate"><span class="pre">--dump-modules</span></code><a class="headerlink" href="#dump-modules" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>Dump module specs, then stop the program.</p>
+</div></blockquote>
+</section>
+<section id="dumpdb">
+<h3><code class="docutils literal notranslate"><span class="pre">--dumpdb</span></code><a class="headerlink" href="#dumpdb" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>Dump the modified db on the console, currently only for the commands
+“weight”, “merge”, “cloneversion” and “replaceversion”.</p>
+</div></blockquote>
+</section>
+<section id="editor-editor">
+<h3><code class="docutils literal notranslate"><span class="pre">--editor</span> <span class="pre">EDITOR</span></code><a class="headerlink" href="#editor-editor" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>Specify the preferred editor. If this is not given, sumo takes the name of
+the editor from environment variables “VISUAL” or EDITOR”.</p>
+</div></blockquote>
+</section>
+<section id="exceptions">
+<h3><code class="docutils literal notranslate"><span class="pre">--exceptions</span></code><a class="headerlink" href="#exceptions" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>On fatal errors that raise python exceptions, don’t catch these. This will
+show a python stacktrace instead of an error message and may be useful for
+debugging the program.</p>
+</div></blockquote>
+</section>
+<section id="x-regexp-exclude-states-regexp">
+<h3><code class="docutils literal notranslate"><span class="pre">-X</span> <span class="pre">REGEXP,</span> <span class="pre">--exclude-states</span> <span class="pre">REGEXP</span></code><a class="headerlink" href="#x-regexp-exclude-states-regexp" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>For command ‘try’ exclude all ‘dependents’ whose state does match one of
+the regular expressions (REGEXP).</p>
+</div></blockquote>
+</section>
+<section id="x-extraline-extra-extralline">
+<h3><code class="docutils literal notranslate"><span class="pre">-x</span> <span class="pre">EXTRALINE,</span> <span class="pre">--extra</span> <span class="pre">EXTRALLINE</span></code><a class="headerlink" href="#x-extraline-extra-extralline" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>Specify an extra lines that are added to the generated RELEASE file. This
+option can be given more than once to specify more than one line. A default
+for this option can be put in a configuration file, there the value must be
+a list of strings, one for each line.</p>
+</div></blockquote>
+</section>
+<section id="getmodules-buildtag">
+<h3><code class="docutils literal notranslate"><span class="pre">--getmodules</span> <span class="pre">BUILDTAG</span></code><a class="headerlink" href="#getmodules-buildtag" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>If this option is used with command <cite>config make</cite> it updates your module
+specifications like the command “build getmodules BUILDTAG`. See also
+description of <a class="reference internal" href="#reference-config-make"><span class="std std-ref">config make</span></a>.</p>
+</div></blockquote>
+</section>
+<section id="h-options-help-options">
+<h3><code class="docutils literal notranslate"><span class="pre">-h</span> <span class="pre">[OPTIONS],</span> <span class="pre">--help</span> <span class="pre">[OPTIONS]</span></code><a class="headerlink" href="#h-options-help-options" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>If other OPTIONS are given, show help for these options. If OPTIONS is
+‘all’, show help for all options. If OPTIONS is missing, show a short
+generic help message for the program.</p>
+</div></blockquote>
+</section>
+<section id="jobs">
+<h3><code class="docutils literal notranslate"><span class="pre">--jobs</span></code><a class="headerlink" href="#jobs" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>Specify the maximum number of jobs in sumo to run simultaneously. Currently
+this is used when the sources for modules of a build are created by
+checking out from version control systems. This number should be an integer
+greater or equal to 0. 0 means that the job number is equal to the number
+of CPUs, 1 means that there is only 1 job running at the same time, all
+greater numbers specify the number of jobs running simultaneously. The
+default for this option is 0.</p>
+</div></blockquote>
+</section>
+<section id="lines">
+<h3><code class="docutils literal notranslate"><span class="pre">--lines</span></code><a class="headerlink" href="#lines" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>Show results of “build showmodules” in single lines.</p>
+</div></blockquote>
+</section>
+<section id="list">
+<h3><code class="docutils literal notranslate"><span class="pre">--list</span></code><a class="headerlink" href="#list" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>Show information for automatic command completion.</p>
+</div></blockquote>
+</section>
+<section id="localbuilddir-builddir">
+<h3><code class="docutils literal notranslate"><span class="pre">--localbuilddir</span> <span class="pre">BUILDDIR</span></code><a class="headerlink" href="#localbuilddir-builddir" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>Specify a <em>local</em> support directory. Modules from the directory specifed
+by –builddir are used but this directory is not modfied. All new builds
+are created in the local build directory and only the build database file
+there is modified.</p>
+</div></blockquote>
+</section>
+<section id="logmsg-logmessage">
+<h3><code class="docutils literal notranslate"><span class="pre">--logmsg</span> <span class="pre">LOGMESSAGE</span></code><a class="headerlink" href="#logmsg-logmessage" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>Specify a logmessage for automatic commits when –dbrepo is used.</p>
+</div></blockquote>
+</section>
+<section id="makeflags-makeflags">
+<h3><code class="docutils literal notranslate"><span class="pre">--makeflags</span> <span class="pre">MAKEFLAGS</span></code><a class="headerlink" href="#makeflags-makeflags" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>Specify extra option strings for make You can specify more than one of
+these by repeating this option or by joining values in a single string
+separated by spaces. A default for this option can be put in a
+configuration file.</p>
+</div></blockquote>
+</section>
+<section id="m-module-module-module">
+<h3><code class="docutils literal notranslate"><span class="pre">-m</span> <span class="pre">MODULE,</span> <span class="pre">--module</span> <span class="pre">MODULE</span></code><a class="headerlink" href="#m-module-module-module" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>Define a <a class="reference internal" href="glossary.html#term-modulespec"><span class="xref std std-term">modulespec</span></a>. If you specify modules with this option you
+don’t have to put <a class="reference internal" href="glossary.html#term-modulespecs"><span class="xref std std-term">modulespecs</span></a> after some of the commands. You can
+specify more than one of these by repeating this option or by joining
+values in a single string separated by spaces. A default for this option
+can be put in a configuration file.</p>
+</div></blockquote>
+</section>
+<section id="no-checkout">
+<h3><code class="docutils literal notranslate"><span class="pre">--no-checkout</span></code><a class="headerlink" href="#no-checkout" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>With this option, “build new” does not check out sources of support
+modules. This option is only here for test purposes.</p>
+</div></blockquote>
+</section>
+<section id="c-no-default-config">
+<h3><code class="docutils literal notranslate"><span class="pre">-C,</span> <span class="pre">--no-default-config</span></code><a class="headerlink" href="#c-no-default-config" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>If this option is not given and –no-default-config is not given, the
+program tries to load the default configuration file sumo-scan.config from
+several standard locations (see documentation on configuration files).</p>
+</div></blockquote>
+</section>
+<section id="n-no-err-build-exists">
+<h3><code class="docutils literal notranslate"><span class="pre">-N,</span> <span class="pre">--no-err-build-exists</span></code><a class="headerlink" href="#n-no-err-build-exists" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>If “build new” finds that a build for the given <a class="reference internal" href="glossary.html#term-modulespecs"><span class="xref std std-term">modulespecs</span></a> already
+exists, it returns an error. If this option is given, the command in this
+case only prints a warning and terminates sumo without error.</p>
+</div></blockquote>
+</section>
+<section id="no-make">
+<h3><code class="docutils literal notranslate"><span class="pre">--no-make</span></code><a class="headerlink" href="#no-make" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>With this option, “build new” does not call “make”.</p>
+</div></blockquote>
+</section>
+<section id="noignorecase">
+<h3><code class="docutils literal notranslate"><span class="pre">--noignorecase</span></code><a class="headerlink" href="#noignorecase" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>For command ‘find’, do NOT ignore case.</p>
+</div></blockquote>
+</section>
+<section id="nolock">
+<h3><code class="docutils literal notranslate"><span class="pre">--nolock</span></code><a class="headerlink" href="#nolock" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>Do not use file locking.</p>
+</div></blockquote>
+</section>
+<section id="o-outputfile-output-outputfile">
+<h3><code class="docutils literal notranslate"><span class="pre">-o</span> <span class="pre">OUTPUTFILE,</span> <span class="pre">--output</span> <span class="pre">OUTPUTFILE</span></code><a class="headerlink" href="#o-outputfile-output-outputfile" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>Define the output for command ‘use’. If this option is not given, ‘use’
+writes to ‘configure/RELEASE’. If this option is ‘-’, the command writes to
+standard-out.”,</p>
+</div></blockquote>
+</section>
+<section id="p-progress">
+<h3><code class="docutils literal notranslate"><span class="pre">-p,</span> <span class="pre">--progress</span></code><a class="headerlink" href="#p-progress" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>Show progress of some commands on stderr. A default for this option can be
+put in a configuration file.</p>
+</div></blockquote>
+</section>
+<section id="readonly">
+<h3><code class="docutils literal notranslate"><span class="pre">--readonly</span></code><a class="headerlink" href="#readonly" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>Do not allow modifying the database files or the support directory. A
+default for this option can be put in a configuration file.</p>
+</div></blockquote>
+</section>
+<section id="recursive">
+<h3><code class="docutils literal notranslate"><span class="pre">--recursive</span></code><a class="headerlink" href="#recursive" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>For command ‘build delete’, delete all dependend builds, too. For command
+‘build state’ with state ‘disabled’, disable all dependend builds, too.</p>
+</div></blockquote>
+</section>
+<section id="scandb-scandb">
+<h3><code class="docutils literal notranslate"><span class="pre">--scandb</span> <span class="pre">SCANDB</span></code><a class="headerlink" href="#scandb-scandb" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>Specify the (optional) <a class="reference internal" href="glossary.html#term-SCANDB"><span class="xref std std-term">SCANDB</span></a> file. The scan database file contains
+information on what moduleversion can be used with what dependency version.</p>
+</div></blockquote>
+</section>
+<section id="sort-build-dependencies-first">
+<h3><code class="docutils literal notranslate"><span class="pre">--sort-build-dependencies-first</span></code><a class="headerlink" href="#sort-build-dependencies-first" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>For commands “build list”, “build find -b”, “build showdependencies” and
+“build showdependents” sort the builds that dependencies of a build always
+come before the build.</p>
+</div></blockquote>
+</section>
+<section id="sort-build-dependencies-last">
+<h3><code class="docutils literal notranslate"><span class="pre">--sort-build-dependencies-last</span></code><a class="headerlink" href="#sort-build-dependencies-last" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>For commands “build list”, “build find -b”, “build showdependencies” and
+“build showdependents” sort the builds that dependencies of a build always
+come after the build.</p>
+</div></blockquote>
+</section>
+<section id="summary">
+<h3><code class="docutils literal notranslate"><span class="pre">--summary</span></code><a class="headerlink" href="#summary" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>Print a summary of the function of the program.</p>
+</div></blockquote>
+</section>
+<section id="test">
+<h3><code class="docutils literal notranslate"><span class="pre">--test</span></code><a class="headerlink" href="#test" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>Perform some self tests.</p>
+</div></blockquote>
+</section>
+<section id="trace">
+<h3><code class="docutils literal notranslate"><span class="pre">--trace</span></code><a class="headerlink" href="#trace" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>Switch on some trace messages.</p>
+</div></blockquote>
+</section>
+<section id="tracemore">
+<h3><code class="docutils literal notranslate"><span class="pre">--tracemore</span></code><a class="headerlink" href="#tracemore" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>Switch on even more trace messages.</p>
+</div></blockquote>
+</section>
+<section id="u-expression-url-patch-expression">
+<h3><code class="docutils literal notranslate"><span class="pre">-U</span> <span class="pre">EXPRESSION,</span> <span class="pre">--url-patch</span> <span class="pre">EXPRESSION</span></code><a class="headerlink" href="#u-expression-url-patch-expression" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>This option is used for commands <code class="docutils literal notranslate"><span class="pre">db</span> <span class="pre">convert</span></code> and <code class="docutils literal notranslate"><span class="pre">db</span> <span class="pre">modconvert</span></code>.
+Specify a repository url patchexpression. Such an expression consists of a
+tuple of 2 python strings. The first is the match expression, the second
+one is the replacement string. The regular expression is applied to every
+source url generated. You can specify more than one patchexpression. A
+default for this option can be put in a configuration file.</p>
+</div></blockquote>
+</section>
+<section id="v-verbose">
+<h3><code class="docutils literal notranslate"><span class="pre">-v,</span> <span class="pre">--verbose</span></code><a class="headerlink" href="#v-verbose" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>Show command calls. A default for this option can be put in a
+configuration file.</p>
+</div></blockquote>
+</section>
+<section id="version">
+<h3><code class="docutils literal notranslate"><span class="pre">--version</span></code><a class="headerlink" href="#version" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>Show the program version and exit.</p>
+</div></blockquote>
+</section>
+<section id="y-yes">
+<h3><code class="docutils literal notranslate"><span class="pre">-y,</span> <span class="pre">--yes</span></code><a class="headerlink" href="#y-yes" title="Permalink to this headline"></a></h3>
+<blockquote>
+<div><p>All questions the program may ask are treated as if the user replied ‘yes’.</p>
+</div></blockquote>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="reference-sumo-scan.html" class="btn btn-neutral float-left" title="sumo-scan" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="app-usage.html" class="btn btn-neutral float-right" title="Using sumo in your application" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, Helmholtz-Zentrum Berlin GmbH.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

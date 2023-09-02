@@ -1,0 +1,4803 @@
+#! /usr/bin/env python3
+# -*- coding: UTF-8 -*-
+
+# pylint: disable=too-many-lines, missing-docstring, invalid-name
+# pylint: disable=consider-using-f-string
+
+import sys
+import os.path
+import os
+import re
+import errno
+import shutil
+import filecmp
+import textwrap
+import pydoc
+import multiprocessing
+
+import sumolib.system
+import sumolib.lock
+import sumolib.JSON
+import sumolib.utils
+import sumolib.cli
+import sumolib.complete
+import sumolib.Config
+import sumolib.ModuleSpec
+import sumolib.Dependencies
+import sumolib.Builds
+import sumolib.repos
+from sumolib.sumo_doc import commands as doc_commands, \
+                             completion as doc_completion, \
+                             pager as doc_pager, \
+                             options as doc_options
+from sumolib.configuration_doc import text as doc_configuration
+
+# version of the program:
+__version__= "4.4" #VERSION#
+
+_pyver= sys.version_info[0:2]
+if _pyver < (3,2):
+    sys.exit("error: python 3.2 or newer is required for this application")
+# Note: The Python version is checked in:
+#     setup.py, sumo, sumo-scan
+
+assert __version__==sumolib.system.__version__
+assert __version__==sumolib.lock.__version__
+assert __version__==sumolib.JSON.__version__
+assert __version__==sumolib.utils.__version__
+assert __version__==sumolib.cli.__version__
+assert __version__==sumolib.complete.__version__
+assert __version__==sumolib.Config.__version__
+assert __version__==sumolib.ModuleSpec.__version__
+assert __version__==sumolib.Dependencies.__version__
+assert __version__==sumolib.Builds.__version__
+assert __version__==sumolib.repos.__version__
+
+KNOWN_MAIN_COMMANDS=set(("build",
+                         "config",
+                         "db",
+                         "help",
+                         "lock",
+                         "unlock" \
+                         ))
+
+KNOWN_CONFIG_COMMANDS=set(("list",
+                           "local",
+                           "make",
+                           "new",
+                           "show",
+                           "standalone" \
+                         ))
+
+KNOWN_DB_COMMANDS=set(("alias-add",
+                       "appconvert",
+                       "check",
+                       "clonemodule",
+                       "cloneversion",
+                       "commands",
+                       "convert",
+                       "dependency-add",
+                       "dependency-delete",
+                       "edit",
+                       "extra",
+                       "find",
+                       "format",
+                       "list",
+                       "make-recipes",
+                       "merge",
+                       "modconvert",
+                       "releasefilename",
+                       "replaceversion",
+                       "show",
+                       "weight" \
+                     ))
+
+KNOWN_BUILD_COMMANDS=set(("delete",
+                          "find",
+                          "getmodules",
+                          "list",
+                          "new",
+                          "remake",
+                          "show",
+                          "showmodules",
+                          "showdependencies",
+                          "showdependents",
+                          "state",
+                          "try",
+                          "use" \
+                        ))
+
+KNOWN_CONFIG_BOOL_OPTIONS= { "progress",
+                             "readonly",
+                             "verbose"
+                           }
+
+KNOWN_CONFIG_STR_OPTIONS=  { "buildtag-stem",
+                             "dbdir",
+                             "dbrepo",
+                             "dbrepomode",
+                             "editor",
+                             "scandb",
+                             "builddir",
+                             "localbuilddir",
+                           }
+
+KNOWN_CONFIG_LIST_OPTIONS= {"#preload",
+                            "#opt-preload",
+                            "#postload",
+                            "#opt-postload",
+                            "alias",
+                            "extra",
+                            "makeflags",
+                            "module",
+                            "dir-patch",
+                            "url-patch",
+                           }
+
+KNOWN_CONFIG_OPTIONS= sumolib.utils.set_union(KNOWN_CONFIG_BOOL_OPTIONS,
+                                              KNOWN_CONFIG_STR_OPTIONS,
+                                              KNOWN_CONFIG_LIST_OPTIONS)
+
+KNOWN_MAKERULE_TARGETS= set(("all", "config", "clean", "distclean"))
+
+KNOWN_TEMPLATES= set(("empty", "github"))
+
+CONFIG_ENV_EXPAND =set(("dbdir",
+                        "dbrepo",
+                        "builddir",
+                        "localbuilddir" \
+                      ))
+
+KNOWN_REPO_MODES=set(( "get", "pull", "push"))
+
+KNOWN_PAGER_MODES=set(("always", "off", "on"))
+
+CONFIG_NAME="sumo.config"
+ENV_CONFIG="SUMOCONFIG"
+ENV_HELP="SUMOHELP"
+BUILDDB="BUILDS.DB"
+DB="DEPS.DB"
+STAMPNAME="sumo"
+
+DATA_SUBDIR="data"
+TEMPLATES_SUBDIR="data/templates"
+
+LOCK_TIMEOUT=4
+# timeout for file locking in seconds
+
+catch_exceptions= True
+pager_mode= "on"
+
+processes= None # means to use the same number as there are CPU cores.
+
+env_help= os.environ.get(ENV_HELP,"")
+if env_help:
+    helpoptions= [h_item.strip() for h_item in env_help.split(",")]
+    if "nocache" in helpoptions:
+        sumolib.complete.CACHING_ENABLED= False
+    for pm in KNOWN_PAGER_MODES:
+        if "pager:%s" % pm in helpoptions:
+            pager_mode= pm
+
+# -----------------------------------------------
+# utilities
+# -----------------------------------------------
+
+def script_shortname():
+    """return the name of this script without a path component."""
+    return os.path.basename(sys.argv[0])
+
+# -----------------------------------------------
+# exception utilities
+# -----------------------------------------------
+
+annotate= sumolib.utils.annotate
+
+# -----------------------------------------------
+# directory utilities and filenames
+# -----------------------------------------------
+
+_realpath_cache= {}
+
+def cached_realpath(dir_):
+    """returns the realpath but caches the results.
+    """
+    p= _realpath_cache.get(dir_)
+    if p is None:
+        p= os.path.realpath(dir_)
+        _realpath_cache[dir_]= p
+    return p
+
+def makefilename(builddir, build_tag):
+    """create a makefile name from a build_tag."""
+    return os.path.join(builddir, "Makefile-%s" % build_tag)
+
+def module_dir(builddir, buildtag, modulename, versionname):
+    """return the complete path to the module.
+
+    If buildtag is "" or None, return just the base directory for all versions
+    and builds of the module.
+    """
+    if not buildtag:
+        return os.path.join(builddir, modulename)
+    return os.path.join(builddir, modulename,
+                        "%s+%s" % (versionname, buildtag))
+
+def db_f(path):
+    """return the filename of the db file."""
+    return os.path.join(path, DB)
+
+def get_builddir(path, path_local):
+    """return the build directory that is actually used for new builds."""
+    if not path_local:
+        return path
+    return path_local
+
+def builddb_f(path, path_local):
+    """return the filename(s) of the builddb file(s).
+
+    path_local, if given, is the name of the local build directory.
+
+    Return:
+    (<build db filename>, <overlay build db filename>)
+
+    May raise:
+        ValueError in path does not exist
+    """
+    # pylint: disable=no-else-return
+    if not path_local:
+        if not os.path.exists(path):
+            raise ValueError("Error, builddir '%s' doesn't exist" % path)
+        return (os.path.join(path, BUILDDB), None)
+    else:
+        if not os.path.exists(path_local):
+            raise ValueError("Error, local builddir '%s' doesn't exist" % \
+                             path_local)
+        return (os.path.join(path_local, BUILDDB),
+                os.path.join(path, BUILDDB))
+
+def builddb_localtag(tag):
+    """return a "local" marked buildtag."""
+    return "local-%s" % tag
+
+def builddb_generate_tag(builddb, buildtag_stem, has_localbuilddir):
+    """automatically generate a build tag."""
+    if not buildtag_stem:
+        buildtag_stem= "AUTO"
+    if has_localbuilddir:
+        buildtag_stem= builddb_localtag(buildtag_stem)
+    return builddb.generate_buildtag(buildtag_stem)
+
+def ensure_dir(dir_, dry_run):
+    """create a dir if it doesn't already exist.
+    """
+    if not dry_run:
+        if not os.path.exists(dir_):
+            os.makedirs(dir_)
+
+def rm_empty_dir(dirname, verbose, dry_run):
+    """remove a directory.
+
+    If the directory is not empty, return without an error message.
+    """
+    if verbose:
+        print("remove dir %s if it is empty" % dirname)
+    if dry_run:
+        return
+    try:
+        os.rmdir(dirname)
+    except OSError as ex:
+        if ex.errno == errno.ENOTEMPTY:
+            pass
+
+def _assume_dir(dir_, dry_run):
+    """ensure that a directory exists."""
+    if not dry_run:
+        if not os.path.exists(dir_):
+            sys.exit("Error, directory 'configure' not found")
+
+# -----------------------------------------------
+# load config files
+# -----------------------------------------------
+
+def load_config_files(options, disable_loading):
+    """Load config files, merge with options and return a Config object.
+
+    May raise:
+        IOError, KeyError, TypeError   : from trying to load the file
+        TypeError, ValueError          : from trying to merge with options
+    """
+    config_name= None
+    if not options.no_default_config:
+        config_name= CONFIG_NAME
+    config= sumolib.Config.ConfigFile(\
+                config_name,
+                ENV_CONFIG,
+                KNOWN_CONFIG_BOOL_OPTIONS,
+                KNOWN_CONFIG_STR_OPTIONS,
+                KNOWN_CONFIG_LIST_OPTIONS,
+                CONFIG_ENV_EXPAND)
+
+    if disable_loading is None:
+        disable_loading= options.disable_loading
+
+    try:
+        # may raise IOError, KeyError, TypeError:
+        config.load(options.config, not disable_loading)
+    except (TypeError, KeyError, IOError, sumolib.JSON.ParseError) as e:
+        # pylint: disable=raising-format-tuple
+        raise sumolib.utils.annotate("Error while loading config file(s): %s",
+                                     e) from e
+
+    # expand environment variables:
+    config.env_expand()
+
+    # copy from <options> object to <config> object, then copy back to
+    # <options> object.
+    # may raise KeyError, TypeError:
+    config.merge_options(options, options.append)
+
+    return (options, config)
+
+# -----------------------------------------------
+# load JSON files
+# -----------------------------------------------
+
+def repo_msg(prefix, args):
+    """generate a standard commit message."""
+    if (not prefix) and (not args):
+        # no log message given
+        return None
+    return "%s %s" % (prefix, " ".join(args))
+
+def repo_manager(dbdir, sourcespec_string, mode,
+                 verbose, dry_run):
+    """create a ManagedRepo object.
+
+    sourcespec_string specifies a repo like:
+      darcs <darcs-url>
+      hg <mercurial-url>
+
+    May raise:
+        AssertionError, OSError, TypeError, ValueError,
+        sumolib.lock.AccessError, sumolib.lock.LockedError,
+        sumolib.lock.NoSuchFileError from ManagedRepo
+    """
+    if not sourcespec_string:
+        # may raise AssertionError, OSError, TypeError, ValueError,
+        #           sumolib.lock.AccessError, sumolib.lock.LockedError,
+        #           sumolib.lock.NoSuchFileError:
+        return sumolib.repos.ManagedRepo(None,None,None,None,verbose,dry_run)
+    if not mode:
+        mode= 'get'
+    # Backwards compatibility: If there is no "=" in sourcespec_string we
+    # assume the old sourcespec format:
+    if "=" in sourcespec_string:
+        spec_parser= sumolib.repos.SourceSpec.from_string_sourcespec
+    else:
+        spec_parser= sumolib.repos.SourceSpec.from_string_sourcespec_old
+
+    source_spec_obj= spec_parser(sourcespec_string)
+    try:
+        # may raise AssertionError, OSError, TypeError, ValueError,
+        #           sumolib.lock.AccessError, sumolib.lock.LockedError,
+        #           sumolib.lock.NoSuchFileError:
+        mngr= sumolib.repos.ManagedRepo(source_spec_obj,
+                                        mode,
+                                        dbdir, LOCK_TIMEOUT, verbose, dry_run)
+    except (AssertionError, OSError, TypeError, ValueError,
+            sumolib.lock.AccessError,
+            sumolib.lock.LockedError,
+            sumolib.lock.NoSuchFileError) as e:
+        # pylint: disable=raising-format-tuple
+        raise annotate("Error while creating/accessing repository, %s", e) \
+              from e
+    return mngr
+
+def db_from_json_file(filename, use_lock= True, keep_locked= False):
+    """load a db, exits gracefully in case of an error.
+
+    May raise:
+        ValueError, IOError, sumolib.JSON.ParseError:
+            from trying to load the file
+    """
+    try:
+        # may raise IOError, ValueError:
+        db= sumolib.Dependencies.DB.from_json_file(filename,
+                                                   use_lock= use_lock,
+                                                   keep_lock=keep_locked,
+                                                   timeout= LOCK_TIMEOUT)
+    except (ValueError, IOError) as e:
+        # pylint: disable=raising-format-tuple
+        raise annotate("Error while loading dependency database: %s", e) from e
+    return db
+
+def db_from_repo(options, keep_locked= False, changes_check= True,
+                 just_get_repo= False):
+    """load a db, exits gracefully in case of an error.
+
+    May raise:
+        EOFError from utils.ask_from_options
+        IOError, ValueError, sumolib.JSON.ParseError from db_from_json_file
+        IOError from mngr.commit
+        IOError from mngr.prepare_read
+    """
+    # pylint: disable= too-many-branches
+    if just_get_repo:
+        repomode= "get"
+    else:
+        repomode= options.dbrepomode
+    # may raise AssertionError, OSError, TypeError, ValueError:
+    mngr= repo_manager(options.dbdir, options.dbrepo, repomode,
+                       options.verbose, options.dry_run)
+    if mngr.local_changes():
+        msg_= "Uncommitted changes found in dependency database file."
+        if not changes_check:
+            sys.stderr.write("Note: %s\n" % msg_)
+        else:
+            if options.yes:
+                print("%s Committing changes.\n" % msg_)
+                reply= "y"
+            else:
+                # may raise EOFError:
+                try:
+                    reply= sumolib.utils.ask_from_options(\
+                            ("%s Commit changes ?\n"
+                             "    'y' commit changes before we continue\n"
+                             "    'n' do not commit and continue\n"
+                             "    'a' abort\n") % msg_,
+                            ["y", "n", "a"])
+                except EOFError as e:
+                    # pylint: disable=raising-format-tuple
+                    raise annotate("%s. "
+                                   "You may want to use option '--yes' "
+                                   "to prevent this error.", e) from e
+            if reply=="a":
+                sys.exit(1)
+            if reply=="y":
+                db_file= db_f(options.dbdir)
+                mylock= sumolib.lock.MyLock(db_file)
+                # may raise sumolib.lock.LockedError,
+                # sumolib.lock.AccessError:
+                mylock.lock()
+                try:
+                    # may raise ValueError, IOError
+                    # or sumolib.JSON.ParseError:
+                    db= db_from_json_file(db_file, use_lock= False)
+                    # the version control system should prompt for a log
+                    # message if none was given with --logmsg: may raise
+                    # IOError:
+                    db_to_repo(options, mngr, db, None, None)
+                finally:
+                    mylock.unlock()
+
+    try:
+        # may raise IOError:
+        mngr.prepare_read() # executes a "pull" command
+    except IOError as e:
+        # pylint: disable=raising-format-tuple
+        raise annotate("Error while loading dependency database: %s" , e) from e
+
+    # may raise IOError, ValueError, sumolib.JSON.ParseError:
+    db= db_from_json_file(db_f(options.dbdir), True, keep_locked)
+    return (mngr, db)
+
+def db_to_module_cache(options):
+    """create a module cache for module cli.
+
+    May raise:
+        EOFError, IOError, ValueError, sumolib.JSON.ParseError
+            from db_from_repo
+    """
+    # may raise EOFError, IOError, ValueError, sumolib.JSON.ParseError:
+    (_, db)= db_from_repo(options,
+                          keep_locked= False, changes_check= False,
+                          just_get_repo= True)
+    return db
+
+def db_to_repo(options, mngr, db, command, arguments):
+    """save a db and use the repo mngr.
+
+    May raise:
+        IOError from json_save
+        IOError from mngr.finish_write
+    """
+    # pylint: disable=R0913
+    #                          Too many arguments
+    _errmsg= "Error while saving dependency database %s"
+    try:
+        # may raise IOError:
+        db.json_save(db_f(options.dbdir), options.verbose, options.dry_run)
+    except IOError as e:
+        # pylint: disable=raising-format-tuple
+        raise annotate(_errmsg, e) from e
+    if mngr:
+        if options.logmsg:
+            msg= options.logmsg
+        else:
+            msg= repo_msg(command, arguments)
+    try:
+        # may raise IOError:
+        mngr.finish_write(msg)
+    except IOError as e:
+        # pylint: disable=raising-format-tuple
+        raise annotate(_errmsg, e) from e
+
+def builddb_from_json_file(path, path_local, keep_locked= False,
+                           must_exist= True):
+    """load a builddb, exits gracefully in case of an error.
+
+    Note: this function only gets the path(s) where the build db file can be
+    found, not the filename itself.
+
+    If local_path is given, a *local* build db is created that is merged with
+    the build db from <path>.
+
+    May raise:
+        ValueError from builddb_f
+        ValueError, IOError from Builds.DB_overlay.from_json_file
+        ValueError, IOError from builddb.overlay
+        IOError if build database doesn't exist
+    """
+    # pylint: disable=R0912
+    #                          Too many branches
+
+    # may raise ValueError:
+    (file_, overlay_file)= builddb_f(path, path_local)
+
+    if not os.path.exists(file_):
+        if must_exist:
+            raise IOError("Error build database '%s' doesn't exist" % file_)
+        # just create an empty object:
+        builddb= sumolib.Builds.DB_overlay(use_lock= True,
+                                           lock_timeout= LOCK_TIMEOUT)
+        # set default filename in the object (JSON.Container method):
+        builddb.filename(file_)
+    else:
+        try:
+            # may raise IOError, ValueError:
+            builddb= sumolib.Builds.DB_overlay.from_json_file(\
+                                    file_,
+                                    use_lock= True,
+                                    keep_lock= keep_locked,
+                                    timeout= LOCK_TIMEOUT)
+        except (IOError, ValueError) as e:
+            # pylint: disable=raising-format-tuple
+            raise annotate("Error while loading build database %s" , e) from e
+
+    if not overlay_file:
+        return builddb
+    try:
+        # may raise IOError, ValueError:
+        builddb.overlay(overlay_file)
+    except (IOError, ValueError) as e:
+        # pylint: disable=raising-format-tuple
+        raise annotate("Error while loading overlay build database: %s", e) \
+              from e
+
+    return builddb
+
+def assert_build_tag(builddb, buildtag):
+    """check if the tag exists in builddb.
+
+    does sys.exit on error.
+    """
+    if not builddb.has_build_tag(buildtag):
+        sys.exit("error: buildtag '%s' not found" % buildtag)
+
+def builddb_to_module_cache(options):
+    """create a module cache for module cli.
+
+    May raise:
+        ValueError, IOError from builddb_from_json_file
+    """
+    # may raise IOError, ValueError:
+    builddb= builddb_from_json_file(options.builddir,
+                                    options.localbuilddir,
+                                    keep_locked= False,
+                                    must_exist= False)
+    return builddb
+
+
+def init_buildcache(scandb_name, builddb, db):
+    """load a builddb, exits gracefully in case of an error.
+
+    May raise:
+        ValueError, IOError from Builds.BuildCache.from_json_file
+    """
+    if not scandb_name:
+        buildcache= sumolib.Builds.BuildCache(lock_timeout= LOCK_TIMEOUT)
+    else:
+        try:
+            # may raise IOError, ValueError:
+            buildcache= sumolib.Builds.BuildCache.from_json_file(\
+                                scandb_name,
+                                use_lock=False,
+                                keep_lock= False,
+                                timeout= LOCK_TIMEOUT)
+        except (IOError, ValueError) as e:
+            # pylint: disable=raising-format-tuple
+            raise annotate("Error while loading build database: %s", e) from e
+    buildcache.update_from_builddb(builddb, db)
+    return buildcache
+
+# -----------------------------------------------
+# aliases
+# -----------------------------------------------
+
+def scan_aliases(aliases):
+    """scan aliases given on the command line."""
+    d= {}
+    if not aliases:
+        return d
+    for a in aliases:
+        (from_, to)= a.split(":")
+        d[from_]= to
+    return d
+
+# -----------------------------------------------
+# error messages
+# -----------------------------------------------
+
+def errmsg(msg):
+    """print something on stderr."""
+    sys.stdout.flush()
+    sys.stderr.write(msg+"\n")
+    sys.stderr.flush()
+
+tracemsg= errmsg
+notemsg= errmsg
+
+# -----------------------------------------------
+# module utilities
+# -----------------------------------------------
+
+def dump_modules(modulespecs):
+    """dump module specs.
+    """
+    for modulespec in modulespecs:
+        print(modulespec.to_string())
+
+# -----------------------------------------------
+# dependency handling
+# -----------------------------------------------
+
+def gather_dependencies(dist_dict, db, modulename, versionname,
+                        gathered_deps):
+    """recursively gather all dependencies of a module.
+
+    For dependencies, do only take moduleversions that are in dist_dict.
+
+    Returns a dict mapping modulenames to versionnames
+
+    called by builddb_match, command "new"
+    """
+    if gathered_deps is None:
+        gathered_deps= {}
+    for dep_name in db.iter_dependencies(modulename, versionname):
+        dep_version= dist_dict[dep_name]
+        gathered_deps[dep_name]= dep_version
+        gathered_deps= gather_dependencies(dist_dict, db, dep_name,
+                                           dep_version, gathered_deps)
+    return gathered_deps
+
+def _add_dependencies(module_dict, db, build_module_dict,
+                      buildtag,
+                      modulename, versionname):
+    """recursively add missing dependencies.
+
+    called by get_dependencies, command "use"
+
+    May raise:
+        KeyError from db.assert_module
+        KeyError from build_module_dict[dep]
+        KeyError from _add_dependencies
+    """
+    # pylint: disable=too-many-arguments
+    try:
+        # may raise KeyError:
+        db.assert_module(modulename, versionname)
+    except KeyError as e:
+        # pylint: disable=raising-format-tuple
+        raise annotate("Error in dependency database: %s", e) from e
+
+    for dep in db.iter_dependencies(modulename, versionname):
+        if dep in module_dict:
+            continue
+        # may raise KeyError:
+        try:
+            version_present= build_module_dict[dep]
+        except KeyError as e:
+            raise annotate(("Error: build %s does not contain module %s "
+                            "although it should due to a dependency. "
+                            "You should delete this inconsistent "
+                            "build.") % (buildtag,dep), e) from e
+        module_dict[dep]= version_present
+        # may raise KeyError:
+        _add_dependencies(module_dict, db, build_module_dict,
+                          buildtag,
+                          dep, version_present)
+
+def get_dependencies(module_dict, db, builddb, buildtag):
+    """recursively complete the module_dict for missing dependencies.
+
+    called by apprelease, command "use"
+
+    May raise:
+        KeyError from _add_dependencies
+    """
+    build_module_dict= builddb.modules(buildtag)
+    modules= list(module_dict.items())
+    for modulename, versionname in modules:
+        # may raise KeyError:
+        _add_dependencies(module_dict, db,
+                          build_module_dict, buildtag,
+                          modulename, versionname)
+
+def builddb_match(dist_dict, db, builddb, modulename, versionname):
+    """try to find matching deps in builddb.
+
+    called by add_modules, command "new"
+    """
+    deps= gather_dependencies(dist_dict, db, modulename, versionname, None)
+    # now deps is a dict mapping modulenames to versionnames that contains all
+    # direct and indirect dependencies of modulename:versionname that was
+    # given to this function.
+    for build_tag in builddb.iter_builds():
+        # try to find modules that were already built, ignore builds that are
+        # not marked "stable" or testing.
+        # This also means that builds marked "disabled" are ignored.
+        if not builddb.is_testing_or_stable(build_tag):
+            continue
+        if not builddb.has_module(build_tag, modulename):
+            continue
+        if builddb.module_link(build_tag, modulename):
+            # if this build has only a link of the module, skip it
+            continue
+        modules= builddb.modules(build_tag)
+        if modules[modulename]!=versionname:
+            # version doesn't match
+            continue
+
+        # from here: check if all dependencies match:
+        match= True
+        for dep_name, dep_ver in deps.items():
+            other= modules.get(dep_name)
+            if dep_ver!= other:
+                match= False
+                break
+        if match:
+            return build_tag
+    return None
+
+# -----------------------------------------------
+# file generation
+# -----------------------------------------------
+
+def gen_RELEASE(db, builddb, buildtag,
+                dist_dict,
+                modulename, versionname,
+                module_directory,
+                extra_lines,
+                verbose, dry_run):
+    """generate a RELEASE file.
+
+    Note: the SUPPORT path is the directory of the builddb file!
+
+    dist_dict: a dictionary mapping modulename-->versionname that is
+        with respect to dependencies a complete set of modules.
+
+    called by create_module, command "new"
+    """
+    # pylint: disable=R0913
+    #                          Too many arguments
+    # pylint: disable=R0914
+    #                          Too many local variables
+    filename= os.path.join(module_directory,
+                           db.releasefile_name(modulename, versionname))
+    deps= []
+
+    for dep_name in db.iter_dependencies(modulename, versionname):
+        dep_versionname= dist_dict[dep_name]
+        deps.append((dep_name, dep_versionname))
+
+    deps= db.sortby_weight(db.sortby_dependency(sorted(deps), True))
+
+    if not deps:
+        # if sumo doesn't know of any dependencies, don't touch
+        # configure/RELEASE.
+        return
+
+    f= sumolib.utils.TextFile(filename, verbose, dry_run)
+
+    f.write("# generated by sumo for build %s\n\n" % buildtag)
+
+    for (dep_name, dep_versionname) in deps:
+        name_here= db.get_alias(modulename, versionname, dep_name)
+        buildtag_here= builddb.module_link(buildtag, dep_name)
+        if buildtag_here is None:
+            buildtag_here= buildtag
+        # We have to make a "realpath" here. The old sumo version before
+        # revision a5da15aeda71 worked this way. If we would not, some
+        # checkRelease.pl calls in some support modules will fail since the
+        # path and the canonical "realpath" don't seem to be the same.
+        b_dir= cached_realpath(builddb.dirname_from_tag(buildtag_here))
+        path= module_dir(b_dir, buildtag_here, dep_name, dep_versionname)
+        f.write("%s=%s\n" % (name_here,path))
+    for l in extra_lines:
+        f.write("%s\n" % l.rstrip())
+    for l in db.extra(modulename, versionname):
+        f.write("%s\n" % l.rstrip())
+    f.close()
+
+def create_makefile(dist_dict, db, builddb,
+                    build_tag,
+                    progress,
+                    verbose, dry_run):
+    """generate a makefile.
+
+    dist_dict: a dictionary mapping modulename-->versionname that is
+        with respect to dependencies a complete set of modules.
+
+    called by create_modules, command "new"
+    """
+    # pylint: disable=too-many-arguments, too-many-locals
+    # pylint: disable=too-many-branches, too-many-statements
+    builddir= builddb.dirname()
+    filename= makefilename(builddir, build_tag)
+    if progress or verbose:
+        notemsg("creating makefile '%s'" % filename)
+    f= sumolib.utils.TextFile(filename, False, dry_run)
+
+    # Put all module path definitions in the makefile, too. We cannot use
+    # aliases here, since they can be defined differently at every place where
+    # a module is used.
+    for modulename in sorted(dist_dict.keys()):
+        versionname= dist_dict[modulename]
+        buildtag_here= builddb.module_link(build_tag, modulename)
+        # ^^^return linked build_tag if the module is linked or None.
+        if buildtag_here is None:
+            buildtag_here= build_tag
+        b_dir= cached_realpath(builddb.dirname_from_tag(buildtag_here))
+        path= module_dir(b_dir, buildtag_here, modulename, versionname)
+        f.write("%s=%s\n" % (modulename,path))
+    f.write("\n")
+
+    paths= {}
+    special_make_recipes= {}
+    for modulename, versionname in builddb.iter_modules(build_tag):
+        if builddb.module_link(build_tag, modulename):
+            continue
+
+        # remember special make recipes for this module, if they are defined:
+        r_= db.get_all_make_recipes(modulename, versionname)
+        if r_ is not None:
+            special_make_recipes[(modulename, versionname)]= r_
+        # create relative directories in makefiles:
+        paths[(modulename, versionname)]= module_dir("", build_tag,
+                                                     modulename,
+                                                     versionname)
+    standard_targets= ("all", "config", "clean", "distclean")
+    # sort module_dirs by (modulename, versionname):
+    module_dirs= []
+    for tp in sorted(paths.keys()):
+        module_dirs.append(paths[tp])
+    stamps= [os.path.join(p, STAMPNAME) for p in module_dirs]
+
+    # define phony targets:
+    f.write(".PHONY: %s\n\n" % (" ".join(sorted(standard_targets))))
+
+    # write generic all, clean and distclean rules:
+    for target in standard_targets:
+        target_stamps= ["%s-%s" % (s, target) for s in stamps]
+        if not target_stamps:
+            f.write("%s:\n\n" % target)
+            continue
+        f.write("%s: \\\n\t" % target)
+        f.write(" \\\n\t".join(target_stamps))
+        f.write("\n\n")
+
+    # collect dependencies for MODULE/stamp-all rule:
+    # write dependencies for stamp-all:
+    stamp_all= STAMPNAME+"-all"
+    for (modulename, versionname) in sorted(paths.keys()):
+        path= paths[(modulename, versionname)]
+        own_stamp= os.path.join(path, stamp_all)
+        dep_stamps= {}
+        for dep_name in db.iter_dependencies(modulename, versionname):
+            # if this build has only a link of the module, skip it
+            if builddb.module_link(build_tag, dep_name):
+                continue
+            dep_version= dist_dict[dep_name]
+            # if the module is a dependency but not part of this build, skip
+            # it, too:
+            if (dep_name, dep_version) not in paths:
+                continue
+            # use relative paths for dependencies:
+            dep_path= module_dir("", build_tag, dep_name, dep_version)
+            dep_stamps[(dep_name, dep_version)]= \
+                os.path.join(dep_path, stamp_all)
+        if dep_stamps:
+            f.write("%s: \\\n\t" % own_stamp)
+            dep_paths= []
+            for tp in sorted(dep_stamps.keys()):
+                dep_paths.append(dep_stamps[tp])
+            f.write(" \\\n\t".join(dep_paths))
+            f.write("\n\n")
+
+    # write extra make rules for modules where special recipes are defined:
+    special_vars= {"DIR": "$(@D)"}
+    all_stamp_files= " ".join([ "%s-%s" % (STAMPNAME, t) \
+                              for t in standard_targets ])
+    for modulename, versionname in sorted(special_make_recipes.keys()):
+        # note: recipes may be an empty dictionary, in this case we assume that
+        # the module has no makefile at all.
+        recipes= special_make_recipes[(modulename, versionname)]
+        # replace '$DIR' with '$(@D)':
+        path= paths[(modulename, versionname)]
+        if not recipes:
+            # no makefile at all, create empty special recipes:
+            for target in KNOWN_MAKERULE_TARGETS:
+                recipes[target]= None
+        for target in sorted(recipes.keys()):
+            lines= recipes.get(target)
+            if lines:
+                lines= ["\t"+sumolib.utils.string_interpolate(s, \
+                                                              special_vars) \
+                        for s in lines]
+            f.write("\n%s/%s-%s:\n" % (path, STAMPNAME, target))
+            f.write("\tcd $(@D) && rm -f %s\n" % all_stamp_files)
+            if lines:
+                f.writelines_n(lines)
+            f.write("\ttouch $@\n")
+
+    # write pattern rules for STAMPNAME-*:
+    for target in standard_targets:
+        f.write("\n%%/%s-%s:\n" % (STAMPNAME, target))
+        # For "config" there is no standard rule to run "make config" in the
+        # module directory. The "config" target is here only custom rules by
+        # the user, see also command "sumo db makerules".
+        f.write("\tcd $(@D) && rm -f %s\n" % all_stamp_files)
+        if target!="config":
+            make_target= " %s" % target if target!="all" else ""
+            f.write("\t$(MAKE) -C $(@D)%s\n" % make_target)
+        f.write("\ttouch $@\n")
+    f.close()
+
+# -----------------------------------------------
+# module creation/deletion
+# -----------------------------------------------
+
+def create_source(db, modulename, versionname,
+                  destdir, verbose, dry_run):
+    """create directory by given source spec.
+
+    May raise:
+        IOError from repos.checkout
+    """
+    # pylint: disable=R0913
+    #                          Too many arguments
+    sourcespec= db.module_source_object(modulename, versionname)
+    try:
+        # may raise IOError:
+        sumolib.repos.checkout(sourcespec,
+                               destdir,
+                               LOCK_TIMEOUT,
+                               verbose, dry_run)
+    except IOError as e:
+        # pylint: disable=raising-format-tuple
+        raise annotate("Error, checkout failed: %s" , e) from e
+
+def delete_module(builddir, build_tag, modulename, versionname,
+                  must_exist,
+                  verbose, dry_run):
+    """delete a single module."""
+    # pylint: disable=R0913
+    #                          Too many arguments
+    dirname= module_dir(builddir, build_tag, modulename, versionname)
+    if verbose:
+        print("removing %s" % dirname)
+    if not dry_run:
+        if os.path.exists(dirname):
+            shutil.rmtree(dirname)
+        else:
+            if must_exist:
+                errmsg(("Warning, directory '%s' cannot be deleted, "
+                        "it does not exist") % dirname)
+        # remove the parent directory if it is empty:
+    rm_empty_dir(modulename, verbose, dry_run)
+
+def create_module(db, builddb, build_tag,
+                  dist_dict,
+                  modulename, versionname,
+                  extra_defs,
+                  progress,
+                  verbose, dry_run):
+    """check out a module.
+
+    returns the build_tag that was used. If the module was found in another
+    build, return that built-tag.
+
+    dist_dict: a dictionary mapping modulename-->versionname that is
+        with respect to dependencies a complete set of modules.
+
+    called by create_modules, command "new"
+
+    May raise:
+        IOError from create_source
+        ValueError if directory cannot be created
+
+    Note that this function is called with multiprocessing.Process(), this is
+    the reason why we need the multiprocessing_function decorator.
+    """
+    # pylint: disable=R0913
+    #                          Too many arguments
+    basedir= module_dir(builddb.dirname(), "", modulename, "")
+    ensure_dir(basedir, dry_run) # creates basedir if it doesn't exist
+    dirname= module_dir(builddb.dirname(), build_tag, modulename, versionname)
+    if os.path.exists(dirname):
+        raise ValueError("directory %s already exists" % dirname)
+
+    if progress:
+        notemsg("checking out %s:%s" % (modulename, versionname))
+    # may raise IOError:
+    create_source(db, modulename, versionname, dirname, verbose, dry_run)
+    gen_RELEASE(db, builddb, build_tag,
+                dist_dict,
+                modulename, versionname,
+                dirname,
+                extra_defs,
+                verbose, dry_run)
+
+# This wrapper is needed when create_module is used with multiprocessing.
+# pool.map_async requires that the function gets only a single agument.
+# Python 3.2.3 compatibility:
+#   we do not use starmap here to remain compatible with python 3.2.3.
+
+def create_module_multiproc(args):
+    """multiprocessing version of create_module.
+    """
+    return create_module(*args)
+
+# -----------------------------------------------
+# builddb utilities
+# -----------------------------------------------
+
+def filter_buildtags(buildtags, builddb, all_builds):
+    """filter buildtags according to parameter all_builds.
+
+    If all_builds is given, do nothing. Otherwise remove all
+    builds that have not the state 'stable' or 'testing'.
+
+    returns:
+      - a list of buildtags
+    """
+    if all_builds:
+        return list(buildtags)
+    # pylint: disable=consider-using-generator
+    return list([b for b in buildtags if builddb.is_testing_or_stable(b)])
+
+def sort_buildtag_order(options):
+    """calc sort_buildtags sort_order from options."""
+    sort_order= "alphabetically"
+    if options.sort_build_dependencies_first:
+        sort_order= "build-dependecies-first"
+    if options.sort_build_dependencies_last:
+        sort_order= "build-dependecies-last"
+    return sort_order
+
+def sort_buildtags(buildtags, builddb, sort_order):
+    """sort alphabetically or by dependencies.
+
+    values for sort_order:
+    - "alphabetically"
+    - "build-dependecies-first"
+    - "build-dependecies-last"
+    """
+    if sort_order=="alphabetically":
+        return sorted(buildtags)
+    if sort_order=="build-dependecies-first":
+        return builddb.sortby_linkage(buildtags, reverse= False)
+    if sort_order=="build-dependecies-last":
+        return builddb.sortby_linkage(buildtags, reverse= True)
+    raise AssertionError("wrong sort_order: "+repr(sort_order))
+
+_builddb= [None]
+def mspecs_from_build(options):
+    """generate a function to return module specs from a build.
+
+    May raise:
+        ValueError, IOError from builddb_from_json_file
+        AssertionError if optopn --builddir is missing
+    """
+    def mspecs(buildtag):
+        """return module specs for a buildtag."""
+        if _builddb[0] is None:
+            if not options.builddir:
+                raise AssertionError("--builddir is needed for modulespecs")
+            # may raise IOError, ValueError:
+            _builddb[0]= builddb_from_json_file(options.builddir,
+                                                options.localbuilddir,
+                                                keep_locked= False,
+                                                must_exist= False)
+        return _builddb[0].module_specs(buildtag)
+    return mspecs
+
+def add_modules(dist_dict, db, builddb, build_tag):
+    """add modules to the builddb object.
+
+    This function looks for compatible modules in all already existing builds.
+    If possible, modules of existing builds are used.
+
+    All modules specified by dist_dict are added with tag <build_tag> to the
+    builddb.
+
+    called by create_modules, command "new"
+    """
+    for modulename in sorted(dist_dict.keys()):
+        versionname= dist_dict[modulename]
+
+        # try to find a build that already has the module and where all it's
+        # dependencies are also present with the same version as in dist_dict:
+        compatible_build= builddb_match(dist_dict, db, builddb, modulename,
+                                        versionname)
+        if compatible_build is None:
+            # no existing build of the module was found, we have to build the
+            # module ourselbves:
+            build_tag_used= build_tag
+        else:
+            # a compatible existing build of the module was found:
+            build_tag_used= compatible_build
+
+        builddb.add_module(build_tag, build_tag_used, modulename, versionname)
+
+# -----------------------------------------------
+# further db functions
+# -----------------------------------------------
+
+def create_app_data(deps, repoinfo, groups):
+    """create configuration data for an app.
+
+    May raise:
+        AssertionError if an unsupported source type was found
+    """
+    # pylint: disable=R0914
+    #                          Too many local variables
+    # pylint: disable=R0912
+    #                          Too many branches
+    keys= list(deps.keys())
+    if len(keys)!=1:
+        sys.exit("error: \"dependencies\" map must have exactly one key")
+
+    modulespecs= []
+    aliases    = []
+
+    app_path= keys[0]
+    specs_by_path= {}
+
+    for module_name, groupdata in groups.items():
+        keys= list(groupdata.keys())
+        if len(keys)!=1:
+            sys.exit("error: groupdata \"%s\" must have exactly one key" % \
+                     module_name)
+        root_path= keys[0]
+        values= groupdata[root_path]
+        if len(values)!=1:
+            sys.exit("error: groupdata \"%s\" must have exactly one "
+                     "subdir" % module_name)
+        subdir= values[0]
+        versionedmodule_path= os.path.join(root_path, subdir)
+        try:
+            r_dict= repoinfo.get(versionedmodule_path)
+        except KeyError as _:
+            # shouldn't happen, but we just print a warning in this
+            # case:
+            errmsg("no source data: %s" % versionedmodule_path)
+            continue
+
+        sourcespec_obj= sumolib.repos.SourceSpec(r_dict)
+        if sourcespec_obj.sourcetype()=="path":
+            versionname= "PATH-%s" % subdir
+        elif sourcespec_obj.sourcetype()=="tar":
+            versionname= "TAR-%s" % subdir
+        elif sourcespec_obj.is_repo():
+            tag= sourcespec_obj.tag()
+            if tag is None:
+                versionname= "TAGLESS-%s" % subdir
+            else:
+                versionname= tag
+        else:
+            raise AssertionError("unsupported sourcetype: %s" % \
+                                 sourcespec_obj.sourcetype())
+        specs_by_path[versionedmodule_path]= (module_name,versionname)
+
+    for (aliasname, path) in deps[app_path].items():
+        (module_name,versionname)= specs_by_path[path]
+        modulespecs.append("%s:%s" % (module_name,versionname))
+        if aliasname!=module_name:
+            aliases.append("%s:%s" % (module_name, aliasname))
+    aliases.sort()
+    modulespecs.sort()
+
+    return {"alias": aliases, "module": modulespecs}
+
+
+def create_database(deps, repoinfo, groups, dir_patches, url_patches):
+    """join the information of the three sources.
+
+    May raise:
+        KeyError when data for a dependency is not found
+        AssertionError if an unsupported source type was found
+    """
+    # pylint: disable=R0914
+    #                          Too many local variables
+    # pylint: disable=R0912
+    #                          Too many branches
+    # pylint: disable=R0915
+    #                          Too many statements
+    # pylint: disable=R0913
+    #                          Too many arguments
+    dir_patcher= sumolib.utils.RegexpPatcher()
+    url_patcher= sumolib.utils.RegexpPatcher()
+    if url_patches:
+        for p in url_patches:
+            # pylint: disable=W0123
+            #                          Use of eval
+            url_patcher.add(eval(p))
+    if dir_patches:
+        for p in dir_patches:
+            # pylint: disable=W0123
+            #                          Use of eval
+            dir_patcher.add(eval(p))
+    _path2namevname= {}
+    _namevname2path= {}
+    db= sumolib.Dependencies.DB(lock_timeout= LOCK_TIMEOUT)
+    # we first create the map from modulenames to versiondata. In this loop we
+    # populate the versiondata only with the source specification. We also
+    # create two maps:
+    #    _path2namevname: maps a diretory path to (module_name, versionname)
+    #    _namevname2path: maps (module_name,versionname) to a diretory path
+    # pylint: disable=too-many-nested-blocks
+    for module_name, groupdata in groups.items():
+        # the root directory of all the versions:
+        for root_path, subdirs in groupdata.items():
+            for subdir in sorted(subdirs):
+                # iterate over all versions from <groups>:
+                # reconstruct the original directory path:
+                versionedmodule_path= os.path.join(root_path, subdir)
+                # get the repository data:
+                try:
+                    r_dict= repoinfo.get(versionedmodule_path)
+                except KeyError as _:
+                    # shouldn't happen, but we just print a warning in this
+                    # case:
+                    errmsg("no source data: %s" % versionedmodule_path)
+                    continue
+
+                src_sourcespec= sumolib.repos.SourceSpec(r_dict)
+                if src_sourcespec.sourcetype()=="path":
+                    # the source is a directory path, not a repository. We
+                    # generate the unique versionname:
+                    if subdir.startswith("PATH-"):
+                        # Try to handle a subdir that was created by this set
+                        # of tools. Such a subdir may already be named
+                        # "PATH-<name>+<treetag>". We want to take <name> as
+                        # versionname in this case:
+                        versionname= sumolib.utils.split_treetag(subdir)[0]
+                    else:
+                        versionname= "PATH-%s" % subdir
+                    # repodata is just the path in this case:
+                    src_sourcespec.path(dir_patcher.apply(\
+                                            src_sourcespec.path()))
+                elif src_sourcespec.sourcetype()=="tar":
+                    # the source is a tar file, not a repository. We
+                    # generate the unique versionname:
+                    if subdir.startswith("TAR-"):
+                        # Try to handle a subdir that was created by this set
+                        # of tools. Such a subdir may already be named
+                        # "TAR-<name>+<treetag>". We want to take <name> as
+                        # versionname in this case:
+                        versionname= sumolib.utils.split_treetag(subdir)[0]
+                    else:
+                        versionname= "TAR-%s" % subdir
+                    src_sourcespec.url(url_patcher.apply(\
+                                           src_sourcespec.url()))
+                elif src_sourcespec.is_repo():
+                    tag= src_sourcespec.tag()
+
+                    if tag is None:
+                        # the source is a repository but has no tag. We
+                        # generate a unique versionname:
+                        if subdir.startswith("TAGLESS-"):
+                            # Try to handle a subdir that was created by this
+                            # set of tools. Such a subdir may already be named
+                            # "PATH-<name>+<treetag>". We want to take <name>
+                            # as versionname in this case:
+                            versionname= sumolib.utils.split_treetag(subdir)[0]
+                        else:
+                            versionname= "TAGLESS-%s" % subdir
+                        # patch URL to <versionedmodule_path>. Since we do not
+                        # know in what state the working copy repository is, we
+                        # have to take this as a source instead of the central
+                        # repository:
+                    else:
+                        # the source is a darcs repository with a tag. We use
+                        # the tag as unique versionname:
+                        versionname= tag
+                    src_sourcespec.url(url_patcher.apply(\
+                                           src_sourcespec.url()))
+                else:
+                    raise AssertionError("unsupported sourcetype: %s" % \
+                                         src_sourcespec.sourcetype())
+
+                db.set_source_(module_name, versionname, src_sourcespec)
+
+                _path2namevname[versionedmodule_path]= \
+                        (module_name,versionname)
+                # when we assume that a versionedmodule_path may contain a
+                # buildtag, there may be several versionedmodule_paths for a
+                # pair of (module_name, versionname).
+                _paths= _namevname2path.setdefault(\
+                                    (module_name, versionname),[])
+                _paths.append(versionedmodule_path)
+
+    #sumolib.JSON.dump(_path2namevname)
+    #sys.exit(0)
+
+    buildcache= sumolib.Builds.BuildCache(lock_timeout= LOCK_TIMEOUT)
+
+    # here we populate the versiondata with the dependency specifications:
+    for modulename in db.iter_modulenames():
+        # loop on stable, testing and unstable versions:
+        for versionname in db.iter_versions(modulename):
+            versionedmodule_paths= _namevname2path[(modulename, versionname)]
+
+            for versionedmodule_path in versionedmodule_paths:
+                _deps= deps.get(versionedmodule_path)
+                if _deps is None:
+                    errmsg("no dependency info for path %s" % \
+                           versionedmodule_path)
+                    continue
+                for dep_alias, dep_path in _deps.items():
+                    try:
+                        (_dep_name, _dep_version)= _path2namevname[dep_path]
+                    except KeyError as e:
+                        st_= ("at module %s version %s path %s: "
+                              "missing data for dependency \"%s\" %%s") % \
+                                  (modulename, versionname,
+                                   versionedmodule_path,
+                                   dep_path)
+                        # pylint: disable=raising-format-tuple
+                        raise annotate(st_, e) from e
+                    if _dep_name != dep_alias:
+                        try:
+                            db.add_alias(modulename, versionname,
+                                         dep_alias, _dep_name)
+                        except ValueError as e:
+                            errmsg("alias error in module %s: %s" % \
+                                   (modulename, str(e)))
+                    db.add_dependency(modulename, versionname,
+                                      _dep_name)
+                    buildcache.add_dependency(modulename, versionname,
+                                              _dep_name, _dep_version,
+                                              "scanned")
+    return (buildcache,db)
+
+def set_weight(db, weight, modulespecs, trace):
+    """set the weight for one or more modules."""
+    for modulespec in modulespecs:
+        modulename= modulespec.modulename
+        if trace:
+            tracemsg("%s\n" % modulespec.to_string())
+
+        # scan stable, testing and unstable versions:
+        for version in db.iter_versions(modulename):
+            if trace:
+                tracemsg("test %s:%s\n" % (modulename,version))
+            if not modulespec.test(version):
+                continue
+            if trace:
+                tracemsg("set weight %d on %s:%s\n" % \
+                                 (weight,modulename,version))
+            db.weight(modulename, version, weight)
+
+# -----------------------------------------------
+# further builddb functions
+# -----------------------------------------------
+
+def delete_build(builddb, build_tags, recursive, yes_option, verbose, dry_run):
+    """delete modules of a build.
+
+    May raise:
+        EOFError from utils.ask_yes_no
+        ValueError if we cannot delete without --recursive
+
+    The state of all builds to be deleted is set to "incomplete".
+    """
+    # pylint: disable=too-many-arguments, too-many-locals, too-many-branches
+    given_build_tags= set(build_tags)
+    complete_build_tags= set()
+    for build in build_tags:
+        dependends= builddb.rec_linked_builds(build)
+        dependends.add(build)
+        complete_build_tags.update(dependends)
+    if given_build_tags!=complete_build_tags:
+        if not recursive:
+            extra_builds= complete_build_tags-given_build_tags
+            raise ValueError("Error, the following builds dependend on "
+                             "the specified build(s):\n%s\n"
+                             "You may delete all these too by using "
+                             "option '--recursive'." % \
+                             " ".join(sorted(extra_builds)))
+    if len(complete_build_tags)>1:
+        msg_= " ".join(sorted(complete_build_tags))
+        if yes_option:
+            print("Deleting the following builds:")
+            print(msg_)
+        else:
+            print("Would delete the following builds:")
+            print(msg_)
+            # may raise EOFError:
+            try:
+                reply= sumolib.utils.ask_yes_no(\
+                        "continue ?\n"
+                        "    'y' continue\n"
+                        "    'n' abort action\n")
+            except EOFError as e:
+                # pylint: disable=raising-format-tuple
+                raise annotate("%s. "
+                               "You may want to use option '--yes' "
+                               "to prevent this error.", e) from e
+            if not reply:
+                sys.exit(1)
+
+    # make all builds "incomplete" in case the delete command fails:
+    for build in complete_build_tags:
+        builddb.change_state(build, "incomplete")
+    builddb.json_save(None, verbose, dry_run)
+
+    for build in sorted(complete_build_tags):
+        # mark this build "broken" just in case the code below throws an
+        # uncaught exception:
+        builddb.change_state(build, "broken")
+        builddb.json_save(None, verbose, dry_run)
+        error= False
+        for modulename, versionname in builddb.iter_modules(build):
+            if builddb.module_link(build, modulename):
+                continue
+            try:
+                delete_module(builddb.dirname(), build,
+                              modulename, versionname,
+                              False, # must_exist==False
+                              verbose, dry_run)
+            except (OSError, IOError) as e:
+                errmsg(str(e))
+                error= True
+                continue
+        if error:
+            errmsg(("Error, "
+                    "build %s couldn't be deleted completely.\n"
+                    "You have to fix the problem and try to delete the build "
+                    "again.") % build)
+
+        makefile= makefilename(builddb.dirname(), build)
+        if os.path.exists(makefile):
+            os.remove(makefilename(builddb.dirname(), build))
+        # leave the BUILD in the build database with state "broken", if there
+        # was an error:
+        if not error:
+            builddb.delete(build)
+            builddb.json_save(None, verbose, dry_run)
+
+def create_modules(dist_dict, db, builddb, builddir, build_tag,
+                   extra_lines,
+                   no_checkout,
+                   progress,
+                   verbose, dry_run):
+    """create all modules.
+
+    dist_dict: a dictionary mapping modulename-->versionname that is
+        with respect to dependencies a complete set of modules.
+
+    called by process, command "new"
+
+    May raise:
+        IOError, ValueError from create_module
+    """
+    # pylint: disable=too-many-arguments, too-many-locals, too-many-branches
+    module_list  = []
+
+    if builddb.is_fully_linked(build_tag):
+        # the new build would contain only links, this is maybe not wanted.
+        notemsg("Note: The generated build '%s' consists only of "
+                "links." % build_tag)
+
+    for modulename in sorted(dist_dict.keys()):
+        versionname= builddb.module_version(build_tag, modulename)
+        # do not re-create modules that are links:
+        if builddb.module_link(build_tag, modulename):
+            continue
+        # module_list contains only the modules that are NOT links:
+        module_list.append({"modulename" : modulename,
+                            "versionname": versionname})
+
+    if not dry_run and not no_checkout:
+        ensure_dir(builddir, dry_run)
+    if no_checkout:
+        return
+    args_list= []
+    for module_dict in module_list:
+        # may raise IOError, ValueError:
+        args=(db, builddb, build_tag,
+              dist_dict,
+              module_dict["modulename"],
+              module_dict["versionname"],
+              extra_lines,
+              progress,
+              verbose, dry_run)
+        if processes==1:
+            create_module(*args)
+        else:
+            args_list.append(args)
+    if processes!=1:
+        # note: processes is a global variable
+        if _pyver < (3,3):
+            # Python 3.2.3 compatibility: "with" doesn't work with "Pool" in
+            # this version.
+            # pylint: disable= consider-using-with
+            pool= multiprocessing.Pool(processes= processes)
+            res= pool.map_async(create_module_multiproc, args_list)
+            res.get()
+            pool.close()
+            pool.join()
+        else:
+            with multiprocessing.Pool(processes= processes) as pool:
+                res= pool.map_async(create_module_multiproc, args_list)
+                # The following "get" waits for all calls to
+                # create_module_multiproc() to complete and will raise an exception
+                # when one of the calls of create_module_multiproc() raised an
+                # exception. The exception message contains the information where
+                # in create_module_multiproc() and create_module() the exception
+                # occured.
+                res.get()
+
+def simple_call_make(builddir, makefile, target, makeflags,
+                     progress, verbose, dry_run):
+    """simple make call.
+
+    May raise:
+        IOError when make fails
+    """
+    # pylint: disable=R0913
+    #                          Too many arguments
+    cmd="make %s -C %s -f %s %s" % (" ".join(makeflags),
+                                    builddir,
+                                    makefile, target)
+    if progress:
+        notemsg("calling make %s %s" % (" ".join(makeflags), target))
+    # tracemsg("CALLING MAKE: %s\n" % cmd)
+    try:
+        # may raise IOError:
+        sumolib.system.system(cmd, False, False, None, verbose, dry_run)
+    except IOError as e:
+        # pylint: disable=raising-format-tuple
+        raise annotate("Error: make failed: %s" , e) from e
+
+def call_make(buildtag, options):
+    """the initial call of "make", mark the build "testing" on success.
+
+    This calls "make config" and then "make all".
+
+    May raise:
+        ValueError, IOError from builddb_from_json_file
+        IOError from simple_call_make
+    """
+    # pylint: disable=R0913
+    #                          Too many arguments
+    builddir= get_builddir(options.builddir, options.localbuilddir)
+    # may raise IOError:
+    simple_call_make(builddir,
+                     makefilename(builddir, buildtag),
+                     "config",
+                     options.makeflags if options.makeflags else [],
+                     options.progress,
+                     options.verbose, options.dry_run)
+    # may raise IOError:
+    simple_call_make(builddir,
+                     makefilename(builddir, buildtag),
+                     "all",
+                     options.makeflags if options.makeflags else [],
+                     options.progress,
+                     options.verbose, options.dry_run)
+
+    if not options.dry_run:
+        # may raise IOError, ValueError:
+        builddb= builddb_from_json_file(options.builddir,
+                                        options.localbuilddir,
+                                        keep_locked= not options.dry_run)
+        builddb.change_state(buildtag, "testing")
+        builddb.json_save(None, options.verbose, options.dry_run)
+        # ^^^ does also unlock the file
+
+def apprelease(build_tag, modulespec_complete, modulespecs,
+               builddb, db,
+               aliases, extra_lines,
+               filename, verbose, dry_run):
+    """create entries for an release file.
+
+    used in command "use".
+    """
+    # pylint: disable=too-many-arguments, too-many-locals, too-many-branches
+    for modulespec in modulespecs:
+        modulename= modulespec.modulename
+        if build_tag is None:
+            # unspecifed build_tag, all versions must be *exactly specified*:
+            if not modulespec.is_exact_spec():
+                sys.exit("modulespec '%s' is not an exactly "
+                         "specified version" % modulespec.to_string())
+
+    if build_tag is None:
+        # must look for a matching build:
+        new_builddb= builddb.filter_by_modulespecs(modulespecs)
+        if new_builddb.is_empty():
+            sys.exit("no build found that matches modulespecs")
+        # take only builds that are "testing" or "stable":
+        tags= [b for b in new_builddb.iter_builds() \
+                 if builddb.is_testing_or_stable(b)]
+        if not tags:
+            sys.exit("no build with state 'stable' or 'testing' found that "
+                     "matches modulespecs")
+        if len(tags)>1:
+            # more than one build match:
+            if not modulespec_complete:
+                tag_str= " ".join(sorted(tags))
+                sys.exit(("Your module specification is incomplete and "
+                          "more than one build matches your specification. "
+                          "Select one of the following builds and specify "
+                          "it with option '-t': \n%s") % tag_str)
+        build_tag= sorted(tags)[0]
+        notemsg("using build %s" % build_tag)
+
+
+    build_modules= builddb.modules(build_tag)
+    module_dict= {}
+    for modulespec in modulespecs:
+        modulename= modulespec.modulename
+        v= build_modules.get(modulename)
+        if v is None:
+            sys.exit("error: module %s not found in build %s" % \
+                     (modulename, build_tag))
+        if not modulespec.test(v):
+            sys.exit("error: no module matching %s "
+                     "found in build %s" % \
+                     (modulespec.to_string(), build_tag))
+        module_dict[modulename]= v
+    get_dependencies(module_dict, db, builddb, build_tag)
+    f= sumolib.utils.TextFile(filename, verbose, dry_run)
+    f.write("# generated by sumo using build %s:\n" % build_tag)
+    directories= {}
+    mods= []
+    for modulename in module_dict:
+        tag= builddb.module_link(build_tag, modulename)
+        if tag is None:
+            tag= build_tag
+        version= builddb.module_version(tag, modulename)
+        b_dir= cached_realpath(builddb.dirname_from_tag(tag))
+        directories[(modulename, version)]= \
+                    module_dir(b_dir, tag, modulename, version)
+        mods.append((modulename, version))
+
+    mods= db.sortby_weight(db.sortby_dependency(sorted(mods), True))
+    for (modulename, version) in mods:
+        f.write("%s=%s\n" % (aliases.get(modulename, modulename),
+                             directories[(modulename, version)]))
+    for l in extra_lines:
+        f.write("%s\n" % l)
+    f.close()
+
+# -----------------------------------------------
+# config subcommands
+# -----------------------------------------------
+
+def subcmd_config_list(arguments, options):
+    """implement "config list".
+
+    May raise:
+        ValueError, IOError, TypeError from load_config_files
+    """
+    sumolib.cli.process_args(arguments, None, options.list, catch_exceptions)
+
+    # may raise IOError, TypeError, ValueError:
+    (_, config)= load_config_files(options, disable_loading= None)
+    # ^^ disable_loading==None means: use options.disable_loading
+
+    print("These configuration files were loaded:\n")
+    print("\n".join(config.real_paths()))
+
+def subcmd_config_make_show(cmd, arguments, options):
+    """implement "config make" and "config show".
+
+    May raise:
+        EOFError from utils.ask_yes_no
+        IOError, TypeError, ValueError from load_config_files
+        ValueError from ModuleSpec.Specs.from_strings
+    """
+    # pylint: disable= too-many-branches
+    argspec= sumolib.cli.CmdSpecs()
+    if cmd=="make":
+        argspec.add("CONFIGFILE", completion= sumolib.cli.complete_file)
+
+    argspec.add("OPTIONNAMES", array= True, optional= True,
+                completion= lambda o, r: \
+                   sumolib.cli.complete_list(KNOWN_CONFIG_OPTIONS, o, r))
+
+    args= sumolib.cli.process_args(arguments, argspec, options.list,
+                                   catch_exceptions)
+
+    if args.OPTIONNAMES: # pylint: disable=no-member
+        for n in args.OPTIONNAMES: # pylint: disable=no-member
+            invalid= set()
+            if n not in KNOWN_CONFIG_OPTIONS:
+                invalid.add(n)
+            if invalid:
+                raise ValueError("Error, invalid OPTIONNAMES: %s" % \
+                                 (" ".join(invalid)))
+
+    if cmd=="make":
+        filename= args.CONFIGFILE # pylint: disable=no-member
+    else:
+        filename= "-"
+
+    # may raise IOError, TypeError, ValueError:
+    (options, config)= load_config_files(options, disable_loading= None)
+    # ^^ disable_loading==None means: use options.disable_loading
+
+    # now that the existing configuration is loaded, we can check for builddir
+    # and dbdir:
+    if options.getmodules:
+        # in this case, the build and dependency database must be loaded. Check
+        # that this is specified:
+        sumolib.cli.assert_options(catch_exceptions,  options, "builddir")
+        sumolib.cli.assert_options(catch_exceptions,  options, "dbdir")
+
+    modulespecs_obj= None
+    if options.module:
+        # may raise ValueError:
+        # mspecs_from_build may raise AssertionError, ValueError:
+        modulespecs_obj= sumolib.ModuleSpec.Specs.from_strings(\
+                             options.module,
+                             mspecs_from_build(options))
+        config.set("module", modulespecs_obj.to_stringlist())
+
+    db= None
+    builddb= None
+    if options.getmodules:
+        if modulespecs_obj:
+            # Must read dependency database:
+            # May raise EOFError, IOError, ValueError, sumolib.JSON.ParseError:
+            (_, db)= db_from_repo(options)
+
+        # Must read build database:
+        # may raise IOError, ValueError:
+        builddb= builddb_from_json_file(options.builddir,
+                                        options.localbuilddir,
+                                        keep_locked= False)
+        new_modulespecs_obj= build_getmodules(db, builddb,
+                                              modulespecs_obj,
+                                              options.getmodules)
+        config.set("module", new_modulespecs_obj.to_stringlist())
+
+
+    if filename!="-" and os.path.exists(filename):
+        # may raise EOFError:
+        try:
+            if not sumolib.utils.ask_yes_no(
+                    "File %s already exists, overwrite ? (y/n)" % filename,
+                    options.yes):
+                sys.exit(0)
+        except EOFError as e:
+            # pylint: disable=raising-format-tuple
+            raise annotate("%s. "
+                           "You may want to use option '--yes' "
+                           "to prevent this error.", e) from e
+    # pylint: disable=no-member
+    config.save(filename, args.OPTIONNAMES, options.verbose, options.dry_run)
+
+def subcmd_config_standalone(arguments, options):
+    """implement "config standalone".
+
+    May raise:
+        EOFError from utils.ask_yes_no
+        IOError, TypeError, ValueError from load_config_files
+    """
+    argspec= sumolib.cli.CmdSpecs()
+    argspec.add("SUMODIR", completion= sumolib.cli.complete_dir)
+    args= sumolib.cli.process_args(arguments, argspec, options.list,
+                                   catch_exceptions)
+
+    # may raise IOError, TypeError, ValueError:
+    (options, config)= load_config_files(options, disable_loading= True)
+
+    sumodir= os.path.abspath(args.SUMODIR) # pylint: disable=no-member
+    if os.path.exists(sumodir):
+        if not os.path.isdir(sumodir):
+            sys.exit("error: '%s' is a file" % sumodir)
+        # pylint: disable=no-member
+        # may raise EOFError:
+        try:
+            if not sumolib.utils.ask_yes_no(\
+                    "Directory '%s' already exists, use it ?" % args.SUMODIR,
+                    options.yes):
+                sys.exit(0)
+        except EOFError as e:
+            # pylint: disable=raising-format-tuple
+            raise annotate("%s. "
+                           "You may want to use option '--yes' "
+                           "to prevent this error.", e) from e
+    ensure_dir(sumodir, options.dry_run)
+    if not config.get("dbrepo"):
+        sys.exit("error, dbrepo must be specified as command line option "
+                 "or by config file")
+    # set dbrepomode to "pull"
+    if config.get("dbrepomode")=="push":
+        # we don't want to use "push" here. Change to "pull" instead:
+        config.set("dbrepomode", "pull")
+    # create a dependency database file in subdir "database":
+    dbdir= os.path.join(sumodir, "database")
+    config.set("dbdir", dbdir)
+    # the following does a checkout of the dependency database:
+    # may raise AssertionError, OSError, TypeError, ValueError:
+    _= repo_manager(dbdir,
+                    config.get("dbrepo"),
+                    config.get("dbrepomode"),
+                    config.get("verbose"), config.get("dry_run"))
+    builddir= os.path.join(sumodir, "build")
+    config.set("builddir", builddir)
+    ensure_dir(builddir, options.dry_run)
+    config.save(CONFIG_NAME, None, options.verbose, options.dry_run)
+
+def subcmd_config_local(arguments, options):
+    """implement "config local".
+
+    May raise:
+        EOFError from utils.ask_yes_no
+        IOError, TypeError, ValueError from load_config_files
+    """
+    argspec= sumolib.cli.CmdSpecs()
+    argspec.add("SUMODIR", completion= sumolib.cli.complete_dir)
+    args= sumolib.cli.process_args(arguments, argspec, options.list,
+                                   catch_exceptions)
+
+    # may raise IOError, TypeError, ValueError:
+    (options, config)= load_config_files(options, disable_loading= True)
+
+    sumodir= os.path.abspath(args.SUMODIR) # pylint: disable=no-member
+    if os.path.exists(sumodir):
+        if not os.path.isdir(sumodir):
+            sys.exit("error: '%s' is a file" % sumodir)
+        # pylint: disable=no-member
+        # may raise EOFError:
+        try:
+            if not sumolib.utils.ask_yes_no(\
+                    "Directory '%s' already exists, use it ?" % args.SUMODIR,
+                    options.yes):
+                sys.exit(0)
+        except EOFError as e:
+            # pylint: disable=raising-format-tuple
+            raise annotate("%s. "
+                           "You may want to use option '--yes' "
+                           "to prevent this error.", e) from e
+    ensure_dir(sumodir, options.dry_run)
+    if not config.get("dbrepo"):
+        sys.exit("error, dbrepo must be specified as command line option "
+                 "or by config file")
+    # set dbrepomode to "pull"
+    if config.get("dbrepomode")=="push":
+        # we don't want to use "push" here. Change to "pull" instead:
+        config.set("dbrepomode", "pull")
+    # create a dependency database file in subdir "database":
+    dbdir= os.path.join(sumodir, "database")
+    config.set("dbdir", dbdir)
+    # the following does a checkout of the dependency database:
+    # may raise AssertionError, OSError, TypeError, ValueError:
+    _= repo_manager(dbdir,
+                    config.get("dbrepo"),
+                    config.get("dbrepomode"),
+                    config.get("verbose"), config.get("dry_run"))
+    builddir= os.path.join(sumodir, "build")
+    config.set("localbuilddir", builddir)
+    ensure_dir(builddir, options.dry_run)
+    config.save(CONFIG_NAME, None, options.verbose, options.dry_run)
+
+def subcmd_config_new(arguments, options):
+    """implement "config new".
+
+    May raise:
+        ValueError if TEMPLATE argument is unknown
+        IOError, TypeError, ValueError from load_config_files
+    """
+    argspec= sumolib.cli.CmdSpecs()
+    argspec.add("SUMODIR")
+    argspec.add("TEMPLATE",
+                completion= lambda o, r: \
+                   sumolib.cli.complete_list(KNOWN_TEMPLATES, o, r))
+    args= sumolib.cli.process_args(arguments, argspec, options.list,
+                                   catch_exceptions)
+
+    # may raise IOError, TypeError, ValueError:
+    (options, config)= load_config_files(options, disable_loading= True)
+
+    sumodir= os.path.abspath(args.SUMODIR) # pylint: disable=no-member
+    if os.path.exists(sumodir):
+        if not os.path.isdir(sumodir):
+            sys.exit("error: '%s' is a file" % sumodir)
+        else:
+            sys.exit("error: '%s' already exists" % sumodir)
+    #builddb= sumolib.Builds.DB(use_lock= False,
+    #                           lock_timeout= LOCK_TIMEOUT)
+    # pylint: disable=no-member
+    if args.TEMPLATE == "empty":
+        db= sumolib.Dependencies.DB(use_lock= False,
+                                    lock_timeout= LOCK_TIMEOUT)
+    elif args.TEMPLATE == "github":
+        t_dir= os.path.join(sumolib.utils.sumolib_dir(),
+                            TEMPLATES_SUBDIR, "github")
+        db= db_from_json_file(db_f(t_dir), use_lock= False)
+    else:
+        l=" ".join(sorted(KNOWN_TEMPLATES))
+        raise ValueError("only %s are allowed for TEMPLATE got %s" % \
+                         (l,repr(args.TEMPLATE)))
+    # pylint: enable=no-member
+
+    # create a dependency database file in subdir "database":
+    dbdir= os.path.join(sumodir, "database")
+    ensure_dir(dbdir, options.dry_run)
+    db.json_save(db_f(dbdir), options.verbose, options.dry_run)
+    config.set("dbdir", dbdir)
+    # create a build database file in subdir "build":
+    builddir= os.path.join(sumodir, "build")
+    config.set("builddir", builddir)
+    ensure_dir(builddir, options.dry_run)
+    config.save(CONFIG_NAME, None, options.verbose, options.dry_run)
+
+# -----------------------------------------------
+# db subcommands
+# -----------------------------------------------
+
+def subcmd_db_edit(arguments, options):
+    """implement "db edit" maincommand.
+
+    May raise:
+        EOFError from utils.ask_yes_no
+        IOError from db_to_repo
+        IOError, ValueError from db_from_json_file
+        lock.LockedError, lock.AccessError from lock
+    """
+    if options.readonly:
+        sys.exit("--readonly forbids editing a database file")
+    sumolib.cli.process_args(arguments, None, options.list, catch_exceptions)
+
+    sumolib.cli.assert_options(catch_exceptions,  options, "dbdir")
+
+    db_file= db_f(options.dbdir)
+    db_tmp = db_file + ".edit.tmp"
+
+    mylock= sumolib.lock.MyLock(db_file)
+    # may raise sumolib.lock.LockedError,
+    # sumolib.lock.AccessError:
+    mylock.lock()
+
+    try:
+        shutil.copyfile(db_file, db_tmp)
+        while True:
+            sumolib.utils.edit_file(db_tmp, options.editor,
+                                    options.verbose, options.dry_run)
+            try:
+                # may raise ValueError, IOError
+                # or sumolib.JSON.ParseError:
+                db= db_from_json_file(db_tmp, use_lock= False)
+                break # leave while-loop
+            except sumolib.JSON.ParseError as e:
+                print("\nError: file has parse errors:")
+                print(str(e))
+                # may raise EOFError:
+                try:
+                    reply= sumolib.utils.ask_yes_no("Re-edit the file (y) or "
+                                                    "abort (n) ? ")
+                except EOFError as e2:
+                    # pylint: disable=raising-format-tuple
+                    raise annotate("%s. "
+                                   "You may want to use option '--yes' "
+                                   "to prevent this error.", e2) from e2
+                if not reply:
+                    # "finally" will take care of the lock
+                    sys.exit("aborting, your changes are in file %s" % db_tmp)
+
+        if filecmp.cmp(db_file, db_tmp):
+            # there were no changes
+            print(("Note: no further action taken since %s was "
+                   "not changed.") % DB)
+        else:
+            # may raise AssertionError, OSError, TypeError, ValueError:
+            mngr= repo_manager(options.dbdir, options.dbrepo,
+                               options.dbrepomode,
+                               options.verbose, options.dry_run)
+
+            # the version control system should prompt for a log message if
+            # none was given with --logmsg:
+            # may raise IOError:
+            db_to_repo(options, mngr, db, None, None)
+
+        os.remove(db_tmp)
+    finally:
+        mylock.unlock()
+
+def subcmd_db_convert(arguments, options):
+    """implement "db convert".
+
+    May raise:
+        IOError from db_to_repo
+        KeyError from create_database
+        ValueError from json_save
+    """
+    argspec= sumolib.cli.CmdSpecs()
+    argspec.add("SCANFILE", completion= sumolib.cli.complete_file)
+    args= sumolib.cli.process_args(arguments, argspec, options.list,
+                                   catch_exceptions)
+
+    sumolib.cli.assert_options(catch_exceptions,  options, "dbdir", "scandb")
+    if os.path.exists(db_f(options.dbdir)):
+        sys.exit("error, db file '%s' already exists" % db_f(options.dbdir))
+    if os.path.exists(options.scandb):
+        sys.exit("error, scandb file '%s' already exists" % \
+                 options.scandb)
+    scandata= sumolib.JSON.loadfile(args.SCANFILE) # pylint: disable=no-member
+    deps= scandata["dependencies"]
+    repoinfo= scandata["repos"]
+    groups= scandata["groups"]
+    # may raise KeyError:
+    (buildcache, db)= create_database(deps, repoinfo, groups,
+                                      options.dir_patch,
+                                      options.url_patch)
+    # may raise AssertionError, OSError, TypeError, ValueError:
+    mngr= repo_manager(options.dbdir, options.dbrepo, options.dbrepomode,
+                       options.verbose, options.dry_run)
+    mngr.prepare_read() # does a "pull"
+    # may raise IOError:
+    db_to_repo(options, mngr, db, "convert", arguments)
+    try:
+        # may raise ValueError:
+        buildcache.json_save(options.scandb,
+                             options.verbose, options.dry_run)
+    except ValueError as e:
+        # pylint: disable=raising-format-tuple
+        raise annotate("Error while saving scan database file: %s", e) from e
+
+def subcmd_db_modconvert(arguments, options):
+    """implement "db modconvert".
+
+    May raise:
+        KeyError from create_database
+        ValueError from ModuleSpec.Specs.from_strings
+        KeyError from db.partial_copy_by_modulespecs
+    """
+    argspec= sumolib.cli.CmdSpecs()
+    argspec.add("SCANFILE", completion= sumolib.cli.complete_file)
+    argspec.add("MODULES", array= True, optional= True)
+    args= sumolib.cli.process_args(arguments, argspec, options.list,
+                                   catch_exceptions)
+
+    modulespecs= []
+    if options.module:
+        modulespecs.extend(options.module)
+    if args.defined("MODULES"):
+        if "module" in options.append:
+            modulespecs.extend(args.MODULES) # pylint: disable=no-member
+        else:
+            modulespecs= args.MODULES # pylint: disable=no-member
+
+    # may raise ValueError:
+    modulespecs_obj= sumolib.ModuleSpec.Specs.from_strings(modulespecs,\
+                                                    None)
+
+    scandata= sumolib.JSON.loadfile(args.SCANFILE) # pylint: disable=no-member
+    deps= scandata["dependencies"]
+    repoinfo= scandata["repos"]
+    groups= scandata["groups"]
+    # may raise KeyError:
+    (_, db)= create_database(deps, repoinfo, groups,
+                             options.dir_patch,
+                             options.url_patch)
+    if options.dump_modules:
+        dump_modules(modulespecs_obj)
+        sys.exit(0)
+    if modulespecs:
+        try:
+            # may raise KeyError:
+            db= db.partial_copy_by_modulespecs(modulespecs_obj)
+        except KeyError as e:
+            # pylint: disable=raising-format-tuple
+            raise annotate("Error module not found in dependency database %s",
+                           e) from e
+    db.json_print()
+
+def subcmd_db_appconvert(arguments, options):
+    """implement "db appconvert".
+
+    May raise:
+        AssertionError from create_app_data
+    """
+    argspec= sumolib.cli.CmdSpecs()
+    argspec.add("SCANFILE", completion= sumolib.cli.complete_file)
+    args= sumolib.cli.process_args(arguments, argspec, options.list,
+                                   catch_exceptions)
+
+    scandata= sumolib.JSON.loadfile(args.SCANFILE) # pylint: disable=no-member
+    deps= scandata["dependencies"]
+    repoinfo= scandata["repos"]
+    groups= scandata["groups"]
+    # may raise AssertionError:
+    struc= create_app_data(deps, repoinfo, groups)
+    sumolib.JSON.dump(struc)
+
+def subcmd_db_format(arguments, options):
+    """implement "db format.
+
+    May raise:
+        ValueError, IOError, sumolib.JSON.ParseError from db_from_repo
+        EOFError, IOError from db_to_repo
+    """
+    sumolib.cli.process_args(arguments, None, options.list, catch_exceptions)
+
+    sumolib.cli.assert_options(catch_exceptions,  options, "dbdir")
+
+    # may raise EOFError, IOError, ValueError, sumolib.JSON.ParseError:
+    (mngr, db)= db_from_repo(options, keep_locked= True, changes_check= False)
+
+    if options.dumpdb:
+        db.json_print()
+    else:
+        # may raise IOError:
+        db_to_repo(options, mngr, db, "merge", arguments)
+        # ^^^ does also unlock the file
+
+def subcmd_db_weight(arguments, options):
+    """implement "db weight".
+
+    May raise:
+        EOFError from db_from_repo
+        IOError, ValueError, sumolib.JSON.ParseError from db_from_repo
+        IOError from db_to_repo
+        ValueError if weight is not an integer
+        ValueError from ModuleSpec.Specs.from_strings
+    """
+    # pylint: disable=R0912
+    #                          Too many branches
+    sumolib.cli.assert_options(catch_exceptions,  options, "dbdir")
+
+    argspec= sumolib.cli.CmdSpecs()
+    argspec.add("WEIGHT")
+    argspec.add("MODULES", array= True,
+                completion= sumolib.complete.moduleversion)
+    args= sumolib.cli.process_args(arguments, argspec, options.list,
+                                   catch_exceptions)
+
+    try:
+        # may raise ValueError:
+        weight= int(args.WEIGHT) # pylint: disable=no-member
+    except ValueError as e:
+        # pylint: disable=raising-format-tuple
+        raise annotate("Error WEIGHT is not an integer: %s" , e) from e
+
+    # pylint: disable=no-member
+    # may raise ValueError:
+    modulespecs_obj= sumolib.ModuleSpec.Specs.from_strings(\
+                                                    args.MODULES,
+                                                    None)
+
+    # may raise EOFError, IOError, ValueError, sumolib.JSON.ParseError:
+    (mngr, db)= db_from_repo(options,
+                             not options.dumpdb and (not options.dry_run))
+
+    if options.dump_modules:
+        dump_modules(modulespecs_obj)
+        sys.exit(0)
+    set_weight(db, weight, modulespecs_obj, options.trace)
+    if options.dumpdb:
+        db.json_print()
+    else:
+        # may raise IOError:
+        db_to_repo(options, mngr, db, "weight", arguments)
+        # ^^^ does also unlock the file
+
+def subcmd_db_show(arguments, options):
+    """implement "db show".
+
+    May raise:
+        EOFError from db_from_repo
+        IOError, ValueError, sumolib.JSON.ParseError from db_from_repo
+        KeyError from partial_copy_by_modulespecs
+        ValueError from ModuleSpec.Specs.from_strings
+    """
+    sumolib.cli.assert_options(catch_exceptions,  options, "dbdir")
+
+    argspec= sumolib.cli.CmdSpecs()
+    argspec.add("MODULES", array= True, optional= True,
+                completion= sumolib.complete.moduleversion)
+    args= sumolib.cli.process_args(arguments, argspec, options.list,
+                                   catch_exceptions)
+
+    modulespecs= []
+    if options.module:
+        modulespecs.extend(options.module)
+    if args.defined("MODULES"):
+        if "module" in options.append:
+            modulespecs.extend(args.MODULES) # pylint: disable=no-member
+        else:
+            modulespecs= args.MODULES # pylint: disable=no-member
+    if not modulespecs:
+        sys.exit("error: module specs missing")
+
+    # may raise EOFError, IOError, ValueError, sumolib.JSON.ParseError:
+    (_, db)= db_from_repo(options)
+    # may raise ValueError:
+    modulespecs_obj= sumolib.ModuleSpec.Specs.from_strings(modulespecs,\
+                                                    None)
+
+    if options.dump_modules:
+        dump_modules(modulespecs_obj)
+        sys.exit(0)
+    try:
+        # may raise KeyError:
+        db= db.partial_copy_by_modulespecs(modulespecs_obj)
+    except ValueError as e:
+        # pylint: disable=raising-format-tuple
+        raise annotate("Error, module not found in dependency "
+                        "database: %s" , e) from e
+
+    db.json_print()
+
+def subcmd_db_check(arguments, options):
+    """implement "db check".
+
+    May raise:
+        EOFError from db_from_repo
+        IOError, ValueError, sumolib.JSON.ParseError from db_from_repo
+    """
+    sumolib.cli.process_args(arguments, None, options.list, catch_exceptions)
+    sumolib.cli.assert_options(catch_exceptions,  options, "dbdir")
+
+    # may raise EOFError, IOError, ValueError, sumolib.JSON.ParseError:
+    (_, db)= db_from_repo(options, keep_locked= False, changes_check= False)
+
+    msg= db.check()
+    print("\n".join(msg))
+
+def subcmd_db_merge(arguments, options):
+    """implement "db merge".
+
+    May raise:
+        EOFError from db_from_repo
+        IOError, ValueError, sumolib.JSON.ParseError from db_from_json_file
+        IOError, ValueError, sumolib.JSON.ParseError from db_from_repo
+        IOError from db_to_repo
+    """
+    argspec= sumolib.cli.CmdSpecs()
+    argspec.add("DB", completion= sumolib.cli.complete_file)
+    args= sumolib.cli.process_args(arguments, argspec, options.list,
+                                   catch_exceptions)
+
+    sumolib.cli.assert_options(catch_exceptions,  options, "dbdir")
+
+    # may raise EOFError, IOError, ValueError, sumolib.JSON.ParseError:
+    (mngr, db)= db_from_repo(options,
+                             not options.dumpdb and (not options.dry_run))
+    # pylint: disable=no-member
+    # may raise IOError, ValueError, sumolib.JSON.ParseError:
+    db2= db_from_json_file(args.DB, True, keep_locked= False)
+    db.merge(db2)
+    if options.dumpdb:
+        db.json_print()
+    else:
+        # may raise IOError:
+        db_to_repo(options, mngr, db, "merge", arguments)
+        # ^^^ does also unlock the file
+
+def subcmd_db_alias_add(arguments, options):
+    """implement "db alias_add".
+
+    May raise:
+        EOFError from db_from_repo
+        IOError, ValueError, sumolib.JSON.ParseError from db_from_repo
+        IOError from db_to_repo
+        ValueError from module_spec.assert_exact
+    """
+    sumolib.cli.assert_options(catch_exceptions,  options, "dbdir")
+
+    argspec= sumolib.cli.CmdSpecs()
+    argspec.add("MODULE", completion= sumolib.complete.moduleversion)
+    argspec.add("DEPENDENCY",
+                completion= lambda d,r: \
+                        sumolib.complete.dependency("MODULE", d, r))
+    argspec.add("ALIAS")
+    args= sumolib.cli.process_args(arguments, argspec, options.list,
+                                   catch_exceptions)
+
+    # pylint: disable=no-member
+    module_spec= sumolib.ModuleSpec.Spec.from_string(args.MODULE)
+    # may raise ValueError:
+    module_spec.assert_exact()
+    # may raise EOFError, IOError, ValueError, sumolib.JSON.ParseError:
+    (mngr, db)= db_from_repo(options,
+                             not options.dumpdb and (not options.dry_run))
+    db.add_alias(module_spec.modulename,
+                 module_spec.versionname,
+                 args.ALIAS, args.DEPENDENCY) # pylint: disable=no-member
+    if options.dumpdb:
+        db.json_print()
+    else:
+        # may raise IOError:
+        db_to_repo(options, mngr, db, "alias-add", arguments)
+        # ^^^ does also unlock the file
+
+def subcmd_db_dependency_add(arguments, options):
+    """implement "db dependency_add".
+
+    May raise:
+        EOFError from db_from_repo
+        IOError, ValueError, sumolib.JSON.ParseError from db_from_repo
+        IOError from db_to_repo
+        ValueError from module_spec.assert_exact
+    """
+    sumolib.cli.assert_options(catch_exceptions,  options, "dbdir")
+
+    argspec= sumolib.cli.CmdSpecs()
+    argspec.add("MODULE", completion= sumolib.complete.moduleversion)
+    argspec.add("DEPENDENCY", completion= sumolib.complete.module)
+    args= sumolib.cli.process_args(arguments, argspec, options.list,
+                                   catch_exceptions)
+
+    # pylint: disable=no-member
+    module_spec= sumolib.ModuleSpec.Spec.from_string(args.MODULE)
+    # may raise ValueError:
+    module_spec.assert_exact()
+    # may raise EOFError, IOError, ValueError, sumolib.JSON.ParseError:
+    (mngr, db)= db_from_repo(options,
+                             not options.dumpdb and (not options.dry_run))
+    db.add_dependency(module_spec.modulename,
+                      module_spec.versionname,
+                      args.DEPENDENCY) # pylint: disable=no-member
+    if options.dumpdb:
+        db.json_print()
+    else:
+        # may raise IOError:
+        db_to_repo(options, mngr, db, "dependency-add", arguments)
+        # ^^^ does also unlock the file
+
+def subcmd_db_dependency_delete(arguments, options):
+    """implement "db dependency_delete".
+
+    May raise:
+        EOFError from db_from_repo
+        IOError, ValueError, sumolib.JSON.ParseError from db_from_repo
+        IOError from db_to_repo
+        ValueError from module_spec.assert_exact
+    """
+    sumolib.cli.assert_options(catch_exceptions,  options, "dbdir")
+
+    argspec= sumolib.cli.CmdSpecs()
+    argspec.add("MODULE", completion= sumolib.complete.moduleversion)
+    argspec.add("DEPENDENCY",
+                completion= lambda d,r: \
+                        sumolib.complete.dependency("MODULE", d, r))
+    args= sumolib.cli.process_args(arguments, argspec, options.list,
+                                   catch_exceptions)
+
+    # pylint: disable=no-member
+    module_spec= sumolib.ModuleSpec.Spec.from_string(args.MODULE)
+    if module_spec.no_version_spec():
+        sys.exit("module has no version")
+    # may raise ValueError:
+    module_spec.assert_exact()
+    # may raise EOFError, IOError, ValueError, sumolib.JSON.ParseError:
+    (mngr, db)= db_from_repo(options,
+                             not options.dumpdb and (not options.dry_run))
+    db.del_dependency(module_spec.modulename,
+                      module_spec.versionname,
+                      args.DEPENDENCY)
+    if options.dumpdb:
+        db.json_print()
+    else:
+        # may raise IOError:
+        db_to_repo(options, mngr, db, "dependency-delete", arguments)
+        # ^^^ does also unlock the file
+
+def subcmd_db_extra(arguments, options):
+    """implement "db extra".
+
+    May raise:
+        EOFError from db_from_repo
+        IOError, ValueError, sumolib.JSON.ParseError from db_from_repo
+        IOError from db_to_repo
+        ValueError from module_spec.assert_exact
+    """
+    sumolib.cli.assert_options(catch_exceptions,  options, "dbdir")
+
+    argspec= sumolib.cli.CmdSpecs()
+    argspec.add("MODULE", completion= sumolib.complete.moduleversion)
+    argspec.add("LINES", array= True, optional= True)
+
+    args= sumolib.cli.process_args(arguments, argspec, options.list,
+                                   catch_exceptions)
+
+    # pylint: disable=no-member
+    module_spec= sumolib.ModuleSpec.Spec.from_string(args.MODULE)
+    # pylint: enable=no-member
+    # may raise ValueError:
+    module_spec.assert_exact()
+    # may raise EOFError, IOError, ValueError, sumolib.JSON.ParseError:
+    (mngr, db)= db_from_repo(options,
+                             not options.dumpdb and (not options.dry_run))
+    # pylint: disable=no-member
+    db.extra(module_spec.modulename, module_spec.versionname, args.LINES)
+    # pylint: enable=no-member
+    if options.dumpdb:
+        db.json_print()
+    else:
+        # may raise IOError:
+        db_to_repo(options, mngr, db, "extra", ["..."])
+        # ^^^ does also unlock the file
+
+def subcmd_db_make_recipes(arguments, options):
+    """implement "db make-recipes".
+
+    May raise:
+        EOFError from db_from_repo
+        IOError, ValueError, sumolib.JSON.ParseError from db_from_repo
+        IOError from db_to_repo
+        ValueError from module_spec.assert_exact
+        ValueError if TARGET is invalid
+    """
+    sumolib.cli.assert_options(catch_exceptions,  options, "dbdir")
+
+    argspec= sumolib.cli.CmdSpecs()
+    argspec.add("MODULE", completion= sumolib.complete.moduleversion)
+    argspec.add("TARGET", optional= True,
+                completion= lambda o, r: \
+                   sumolib.cli.complete_list(KNOWN_MAKERULE_TARGETS, o, r))
+    argspec.add("LINES", array= True, optional= True)
+
+    args= sumolib.cli.process_args(arguments, argspec, options.list,
+                                   catch_exceptions)
+    # pylint: disable=no-member
+    if args.TARGET is not None:
+        if args.TARGET not in KNOWN_MAKERULE_TARGETS:
+            l=" ".join(sorted(KNOWN_MAKERULE_TARGETS))
+            raise ValueError(("if TARGET is specified, only one of %s "
+                              "is allowed") % l)
+
+    module_spec= sumolib.ModuleSpec.Spec.from_string(args.MODULE)
+    # may raise ValueError:
+    module_spec.assert_exact()
+    # may raise EOFError, IOError, ValueError, sumolib.JSON.ParseError:
+    (mngr, db)= db_from_repo(options,
+                             not options.dumpdb and (not options.dry_run))
+    db.set_make_recipes(module_spec.modulename, module_spec.versionname,
+                        args.TARGET, args.LINES)
+    if options.dumpdb:
+        db.json_print()
+    else:
+        if args.TARGET is None:
+            args_= []
+        else:
+            args_= [args.TARGET, "..."]
+        # may raise IOError:
+        db_to_repo(options, mngr, db, "make-recipes", args_)
+        # ^^^ does also unlock the file
+
+def subcmd_db_releasefilename(arguments, options):
+    """implement "db releasefilename".
+
+    May raise:
+        EOFError from db_from_repo
+        IOError, ValueError, sumolib.JSON.ParseError from db_from_repo
+        IOError from db_to_repo
+        ValueError from module_spec.assert_exact
+    """
+    sumolib.cli.assert_options(catch_exceptions,  options, "dbdir")
+
+    argspec= sumolib.cli.CmdSpecs()
+    argspec.add("MODULE", completion= sumolib.complete.moduleversion)
+    argspec.add("RELEASEFILENAME")
+    args= sumolib.cli.process_args(arguments, argspec, options.list,
+                                   catch_exceptions)
+
+    # pylint: disable=no-member
+    module_spec= sumolib.ModuleSpec.Spec.from_string(args.MODULE)
+    # may raise ValueError:
+    module_spec.assert_exact()
+    # may raise EOFError, IOError, ValueError, sumolib.JSON.ParseError:
+    (mngr, db)= db_from_repo(options,
+                             not options.dumpdb and (not options.dry_run))
+    db.releasefile_name(module_spec.modulename,
+                        module_spec.versionname,
+                        args.RELEASEFILENAME)
+    if options.dumpdb:
+        db.json_print()
+    else:
+        # may raise IOError:
+        db_to_repo(options, mngr, db, "releasefilename", arguments)
+        # ^^^ does also unlock the file
+
+def subcmd_db_commands(arguments, options):
+    """implement "db commands".
+
+    May raise:
+
+        EOFError from db_from_repo
+        IOError, ValueError, sumolib.JSON.ParseError from db_from_repo
+        IOError from db_to_repo
+        ValueError from module_spec.assert_exact
+    """
+    sumolib.cli.assert_options(catch_exceptions,  options, "dbdir")
+
+    argspec= sumolib.cli.CmdSpecs()
+    argspec.add("MODULE", completion= sumolib.complete.moduleversion)
+    argspec.add("LINES", array= True, optional= False)
+
+    args= sumolib.cli.process_args(arguments, argspec, options.list,
+                                   catch_exceptions)
+
+    # pylint: disable=no-member
+    module_spec= sumolib.ModuleSpec.Spec.from_string(args.MODULE)
+    # pylint: enable=no-member
+    # may raise ValueError:
+    module_spec.assert_exact()
+    # may raise EOFError, IOError, ValueError, sumolib.JSON.ParseError:
+    (mngr, db)= db_from_repo(options,
+                             not options.dumpdb and (not options.dry_run))
+    sourcespec= db.module_source_object(module_spec.modulename,\
+                                        module_spec.versionname)
+    sourcespec.commands(args.LINES) # pylint: disable=no-member
+    db.set_source_spec(module_spec.modulename, module_spec.versionname,
+                       sourcespec)
+    if options.dumpdb:
+        db.json_print()
+    else:
+        # may raise IOError:
+        db_to_repo(options, mngr, db, "commands", arguments)
+        # ^^^ does also unlock the file
+
+def subcmd_db_clone_replace_version(command, arguments, options):
+    """implement "db cloneversion/replaceversion".
+
+    May raise:
+        EOFError, ValueError, IOError, sumolib.JSON.ParseError
+            from db_from_repo
+        EOFError from utils.ask_abort
+        IOError from db_to_repo
+        KeyError, ValueError from db.patch_version
+        ValueError from repos.SourceSpec.from_string_sourcespec
+    """
+    sumolib.cli.assert_options(catch_exceptions,  options, "dbdir")
+
+    argspec= sumolib.cli.CmdSpecs()
+    argspec.add("MODULE", completion= sumolib.complete.module)
+    argspec.add("OLD-VERSION",
+                completion= lambda v, r: \
+                        sumolib.complete.version("MODULE", v, r))
+    argspec.add("NEW-VERSION")
+    argspec.add("SOURCESPEC", array= True, optional= True)
+    args= sumolib.cli.process_args(arguments, argspec, options.list,
+                                   catch_exceptions)
+
+    do_replace= (command=="replaceversion")
+    modulename= args.MODULE # pylint: disable=no-member
+    sourcespec= " ".join(args.SOURCESPEC) # pylint: disable=no-member
+
+    # may raise EOFError, IOError, ValueError, sumolib.JSON.ParseError:
+    (mngr, db)= db_from_repo(options,
+                             not options.dumpdb and (not options.dry_run))
+    # pylint: disable=no-member
+    # may raise KeyError, ValueError:
+    db.patch_version(modulename,
+                     args.OLD_VERSION, args.NEW_VERSION,
+                     do_replace)
+
+    if not sourcespec:
+        # guess tag from versionname
+        # pylint: disable=no-member
+        changed= db.set_source_spec_by_tag(modulename,
+                                           args.NEW_VERSION,
+                                           args.NEW_VERSION)
+    else:
+        # may raise ValueError:
+        source_spec_obj= \
+            sumolib.repos.SourceSpec.from_string_sourcespec(sourcespec)
+        # pylint: disable=no-member
+        changed= db.set_source_spec(modulename, args.NEW_VERSION,
+                                    source_spec_obj)
+    print("Added module:")
+    # pylint: disable=no-member
+    report_db= db.partial_copy_by_list([(modulename, args.NEW_VERSION)])
+    report_db.json_print()
+    if not changed:
+        print(("\nCAUTION: source specification of this module is "
+               "identical with that of \n"
+               "%s:%s, this is probably not what you want!") % \
+               (modulename, args.OLD_VERSION))
+    # may raise EOFError:
+    try:
+        sumolib.utils.ask_abort("Proceed ? ", options.yes)
+    except EOFError as e:
+        # pylint: disable=raising-format-tuple
+        raise annotate("%s. "
+                       "You may want to use option '--yes' "
+                       "to prevent this error.", e) from e
+    if options.dumpdb:
+        db.json_print()
+    else:
+        # may raise IOError:
+        db_to_repo(options, mngr, db, command, arguments)
+        # ^^^ does also unlock the file
+
+def subcmd_db_clonemodule(arguments, options):
+    """implement "db clonemodule".
+
+    May raise:
+        EOFError, IOError, ValueError, sumolib.JSON.ParseError
+            from db_from_repo
+        IOError from db_to_repo
+    """
+    sumolib.cli.assert_options(catch_exceptions,  options, "dbdir")
+
+    argspec= sumolib.cli.CmdSpecs()
+    argspec.add("OLD-MODULE", completion= sumolib.complete.module)
+    argspec.add("NEW-MODULE")
+    argspec.add("VERSIONS",
+                completion= lambda v,r: \
+                      sumolib.complete.dependency("NEW-MODULE", v, r),
+                array= True, optional= True)
+    args= sumolib.cli.process_args(arguments, argspec, options.list,
+                                   catch_exceptions)
+
+    # may raise EOFError, IOError, ValueError, sumolib.JSON.ParseError:
+    (mngr, db)= db_from_repo(options,
+                             not options.dumpdb and (not options.dry_run))
+    # pylint: disable=no-member
+    db.clonemodule(args.OLD_MODULE, args.NEW_MODULE,
+                   args.VERSIONS)
+    if options.dumpdb:
+        db.json_print()
+    else:
+        # may raise IOError:
+        db_to_repo(options, mngr, db, "clonemodule", arguments)
+        # ^^^ does also unlock the file
+
+def subcmd_db_list(arguments, options):
+    """implement "db list".
+
+    May raise:
+        EOFError, IOError, ValueError, sumolib.JSON.ParseError
+            from db_from_repo
+        KeyError id module is not found in dependency database
+        ValueError from ModuleSpec.Specs.from_strings
+    """
+    sumolib.cli.assert_options(catch_exceptions,  options, "dbdir")
+
+    argspec= sumolib.cli.CmdSpecs()
+    argspec.add("MODULES", completion= sumolib.complete.module,
+                array= True, optional= True)
+    args= sumolib.cli.process_args(arguments, argspec, options.list,
+                                   catch_exceptions)
+
+    # may raise EOFError, IOError, ValueError, sumolib.JSON.ParseError:
+    (_, db)= db_from_repo(options)
+    # NOTE: option "--modules" is NOT used here
+    if not args.defined("MODULES"):
+        # no modules given, list all module names:
+        result= sorted(db.iter_modulenames())
+        sumolib.JSON.dump(result)
+        return
+
+    modules= args.MODULES # pylint: disable=no-member
+    result= {}
+
+    if len(modules)==1 and modules[0]==".":
+        # wildcard, list ALL versions of ALL modules:
+        for modulename in db.iter_modulenames():
+            versions= db.sorted_moduleversions(modulename)
+            result[modulename]= versions
+    else:
+        # Modules are given, list only the given modules. The user may specify
+        # ranges of moduleversions like MODULE:+VERSION or MODULE:-VERSION.
+        # may raise ValueError:
+        modulespecs_obj= \
+                sumolib.ModuleSpec.Specs.from_strings(modules, None)
+        if options.dump_modules:
+            dump_modules(modulespecs_obj)
+            return
+        for modulespec in modulespecs_obj:
+            modulename= modulespec.modulename
+            # leave only versions that match modulespec:
+            try:
+                moduleversions= db.sorted_moduleversions(modulename)
+            except KeyError as e:
+                # pylint: disable=raising-format-tuple
+                raise annotate("Error module "+modulename+" not " + \
+                               "found in dependency database: %s",
+                               e) from e
+            versions= [v for v in moduleversions if modulespec.test(v)]
+            result[modulename]= versions
+    sumolib.JSON.dump(result)
+
+def subcmd_db_find(arguments, options):
+    """implement "db find".
+
+    May raise:
+        EOFError, IOError, ValueError, sumolib.JSON.ParseError
+            from db_from_repo
+    """
+    argspec= sumolib.cli.CmdSpecs()
+    argspec.add("REGEXP")
+    args= sumolib.cli.process_args(arguments, argspec, options.list,
+                                   catch_exceptions)
+
+    sumolib.cli.assert_options(catch_exceptions,  options, "dbdir")
+    # may raise EOFError, IOError, ValueError, sumolib.JSON.ParseError:
+    (_, db)= db_from_repo(options)
+    if options.noignorecase:
+        rx_flags= 0
+    else:
+        rx_flags= re.IGNORECASE
+    rx= re.compile(args.REGEXP, rx_flags) # pylint: disable=no-member
+    results= db.search_modules(rx)
+    if options.brief:
+        for (module,version) in results:
+            print("%s:%s" % (module,version))
+        return
+    newdb= db.partial_copy_by_list(results)
+    newdb.json_print()
+
+# -----------------------------------------------
+# build subcommands
+# -----------------------------------------------
+
+def subcmd_build_list(arguments, options):
+    """implement "subcmd_build_list".
+
+    May raise:
+        IOError, ValueError from builddb_from_json_file
+    """
+    sumolib.cli.process_args(arguments, None, options.list, catch_exceptions)
+
+    sumolib.cli.assert_options(catch_exceptions,  options, "builddir")
+    # may raise IOError, ValueError:
+    builddb= builddb_from_json_file(options.builddir,
+                                    options.localbuilddir,
+                                    keep_locked= False, must_exist= False)
+    buildtags= sort_buildtags(filter_buildtags(builddb.iter_builds(),
+                                               builddb, options.all_builds),
+                              builddb, sort_buildtag_order(options))
+
+    for buildtag in buildtags:
+        print(buildtag)
+
+def subcmd_build_show(arguments, options):
+    """implement "subcmd_build_show".
+
+    May raise:
+        IOError, ValueError from builddb_from_json_file
+    """
+    sumolib.cli.assert_options(catch_exceptions,  options, "builddir")
+    argspec= sumolib.cli.CmdSpecs()
+    argspec.add("BUILDTAG", completion= sumolib.complete.builds)
+    args= sumolib.cli.process_args(arguments, argspec, options.list,
+                                   catch_exceptions)
+
+    if options.buildtag:
+        sys.exit("error: you cannot use --buildtag here")
+
+    # may raise IOError, ValueError:
+    builddb= builddb_from_json_file(options.builddir,
+                                    options.localbuilddir,
+                                    keep_locked= False)
+    assert_build_tag(builddb, args.BUILDTAG) # pylint: disable=no-member
+    new_builddb= sumolib.Builds.DB(use_lock= True, lock_timeout= LOCK_TIMEOUT)
+    new_builddb.add_build(builddb, args.BUILDTAG) # pylint: disable=no-member
+    new_builddb.json_print()
+
+def build_getmodules(db, builddb, modulespecs_obj, buildtag):
+    """implement "build_getmodules without option processing.
+    """
+    modulenames_set= None
+    if modulespecs_obj:
+        # a set of all wanted module names:
+        modulenames_set= modulespecs_obj.module_set()
+
+    modulenames_found= set()
+    build_module_specs= sumolib.ModuleSpec.Specs()
+    modules= builddb.modules(buildtag)
+    for module in sorted(modules.keys()):
+        if modulenames_set:
+            if module not in modulenames_set:
+                continue
+            modulenames_found.add(module)
+        build_module_specs.add(sumolib.ModuleSpec.Spec(module,
+                                                       modules[module],
+                                                       'eq'))
+
+    # Possibly complete the module list. This may be needed when some
+    # modules were filtered out when modulenames_set is not None.
+    if modulespecs_obj:
+        # First test if all required modules were found:
+        if modulenames_set != modulenames_found:
+            missing= sorted(modulenames_set.difference(modulenames_found))
+            raise ValueError(("Error, module(s) %s were not found "
+                              "in build %s.") % \
+                             (", ".join(missing), buildtag))
+
+        # Use functions of the Dependencies.DB class to complete the module
+        # list.
+        # may raise KeyError, ValueError:
+        sets_dict= db.sets_dict(build_module_specs)
+
+        # add all missing dependencies:
+        for added_module in db.complete_sets_dict(sets_dict):
+            build_module_specs.add(\
+                    sumolib.ModuleSpec.Spec(added_module,
+                                            modules[added_module], 'eq'))
+
+    return build_module_specs
+
+
+def subcmd_build_getmodules(arguments, options):
+    """implement "subcmd_build_getmodules".
+
+    May raise:
+        IOError, ValueError from builddb_from_json_file
+    """
+    # pylint: disable=too-many-branches, too-many-locals, too-many-statements
+    sumolib.cli.assert_options(catch_exceptions,  options, "builddir")
+    sumolib.cli.assert_options(catch_exceptions,  options, "dbdir")
+    argspec= sumolib.cli.CmdSpecs()
+    argspec.add("BUILDTAG", optional= False,
+                completion= sumolib.complete.builds)
+    argspec.add("MODULES", array= True, optional= True,
+                completion= sumolib.complete.moduleversion)
+    args= sumolib.cli.process_args(arguments, argspec, options.list,
+                                   catch_exceptions)
+
+    if options.buildtag:
+        sys.exit("error: you cannot use --buildtag here")
+
+    modulespecs= []
+    if options.module:
+        modulespecs.extend(options.module)
+    if args.defined("MODULES"):
+        if "module" in options.append:
+            modulespecs.extend(args.MODULES) # pylint: disable=no-member
+        else:
+            modulespecs= args.MODULES # pylint: disable=no-member
+
+    modulespecs_obj= None
+    db= None
+    if modulespecs:
+        # Must read dependency database.
+        # May raise EOFError, IOError, ValueError, sumolib.JSON.ParseError:
+        (_, db)= db_from_repo(options)
+
+        # mspecs_from_build may raise AssertionError, ValueError:
+        # may raise ValueError:
+        modulespecs_obj= sumolib.ModuleSpec.Specs.from_strings(\
+                             modulespecs,
+                             None)
+
+    # may raise IOError, ValueError:
+    builddb= builddb_from_json_file(options.builddir,
+                                    options.localbuilddir,
+                                    keep_locked= False)
+    # dict with modules of all considered builds:
+    buildtag= args.BUILDTAG # pylint: disable=no-member
+
+    new_modulespecs_obj= build_getmodules(db, builddb,
+                                          modulespecs_obj, buildtag)
+    module_strings= new_modulespecs_obj.sorted().to_stringlist()
+
+    if options.lines:
+        print(" ".join(module_strings))
+    else:
+        print("\n".join(module_strings))
+
+def subcmd_build_showmodules(arguments, options):
+    """implement "subcmd_build_showmodules".
+
+    May raise:
+        IOError, ValueError from builddb_from_json_file
+    """
+    # pylint: disable=too-many-branches, too-many-locals, too-many-statements
+    sumolib.cli.assert_options(catch_exceptions,  options, "builddir")
+    argspec= sumolib.cli.CmdSpecs()
+    argspec.add("BUILDTAG", optional= True,
+                completion= sumolib.complete.builds)
+    args= sumolib.cli.process_args(arguments, argspec, options.list,
+                                   catch_exceptions)
+
+    if options.buildtag:
+        sys.exit("error: you cannot use --buildtag here")
+
+    # may raise IOError, ValueError:
+    builddb= builddb_from_json_file(options.builddir,
+                                    options.localbuilddir,
+                                    keep_locked= False)
+    # pylint: disable= no-member
+    if args.BUILDTAG:
+        tags= [args.BUILDTAG]
+    else:
+        tags= sort_buildtags(filter_buildtags(builddb.iter_builds(),
+                                              builddb, options.all_builds),
+                             builddb, sort_buildtag_order(options))
+    # pylint: enable= no-member
+    module_strings= {}
+    for tag in tags:
+        build_module_specs= sumolib.ModuleSpec.Specs()
+        modules= builddb.modules(tag)
+        for module in sorted(modules.keys()):
+            build_module_specs.add(sumolib.ModuleSpec.Spec(module,
+                                                           modules[module],
+                                                           'eq'))
+        module_strings[tag]= build_module_specs.sorted().to_stringlist()
+
+    if options.lines:
+        if options.brief:
+            for tag in tags:
+                print(" ".join(module_strings[tag]))
+        else:
+            fmt= "%%-%ds : %%s" % max([len(e) for e in tags])
+            for tag in tags:
+                print(fmt % (tag, " ".join(module_strings[tag])))
+    else:
+        for tag in tags:
+            if options.brief:
+                print("\n".join(module_strings[tag]))
+            else:
+                print("%s :" % tag)
+                for m in module_strings[tag]:
+                    print("    %s" % m)
+
+def subcmd_build_showdeps(arguments, options, subcommand):
+    """implement "subcmd_build_showdependencies/dependents.
+
+    - reverse: if True, show dependents instead of dependencies
+
+    May raise:
+        IOError, ValueError from builddb_from_json_file
+    """
+    sumolib.cli.assert_options(catch_exceptions,  options, "builddir")
+    argspec= sumolib.cli.CmdSpecs()
+    argspec.add("BUILDTAG", optional= True,
+                completion= sumolib.complete.builds)
+    args= sumolib.cli.process_args(arguments, argspec, options.list,
+                                   catch_exceptions)
+
+    if options.buildtag:
+        sys.exit("error: you cannot use --buildtag here")
+
+    # may raise IOError, ValueError:
+    builddb= builddb_from_json_file(options.builddir,
+                                    options.localbuilddir,
+                                    keep_locked= False)
+    # pylint: disable= no-member
+    if args.BUILDTAG:
+        tags= [args.BUILDTAG]
+    else:
+        # iter_builds already returns the builds alphabetically:
+        tags= filter_buildtags(builddb.iter_builds(), builddb,
+                               options.all_builds)
+    # pylint: enable= no-member
+    l= 0
+    for tag in tags:
+        _l= len(tag)
+        if _l > l:
+            l= _l
+    fmt= "%%-%ds : %%s" % l
+    for tag in tags:
+        # note: not recursive !
+        if subcommand=="showdependencies":
+            deps= builddb.linked_to(tag)
+        elif subcommand=="showdependents":
+            deps= builddb.linked_builds(tag)
+        else:
+            raise AssertionError(("internal error at subcmd_build_showdeps, "
+                                  "unknown subcommand: %s") % repr(subcommand))
+        # sort found dependencies / dependents according to options
+        # --sort-build-dependencies-first or --sort-build-dependencies-last:
+        deps_lst= sort_buildtags(deps, builddb, sort_buildtag_order(options))
+        print(fmt % (tag, " ".join(deps_lst)))
+
+def subcmd_build_state(arguments, options):
+    """implement "subcmd_build_state".
+
+    May raise:
+        EOFError from utils.ask_abort
+        ValueError, IOError from builddb_from_json_file
+        ValueError from builddb.change_state
+    """
+    sumolib.cli.assert_options(catch_exceptions,  options, "builddir")
+    argspec= sumolib.cli.CmdSpecs()
+    argspec.add("BUILDTAG", completion= sumolib.complete.builds)
+    argspec.add("NEW-STATE", optional= True)
+    args= sumolib.cli.process_args(arguments, argspec, options.list,
+                                   catch_exceptions)
+
+    if options.buildtag:
+        sys.exit("error: you cannot use --buildtag here")
+
+    buildtag = args.BUILDTAG # pylint: disable=no-member
+    new_state= args.NEW_STATE # pylint: disable=no-member
+
+    sumolib.cli.assert_options(catch_exceptions,  options, "builddir")
+    if options.readonly:
+        sys.exit("--readonly forbids changing the state of a build")
+
+    if not new_state:
+        # may raise IOError, ValueError:
+        builddb= builddb_from_json_file(options.builddir,
+                                        options.localbuilddir,
+                                        keep_locked= False)
+        assert_build_tag(builddb, buildtag)
+        print("%-20s : %s" % (buildtag,
+                              builddb.state(buildtag)))
+    else:
+        # may raise IOError, ValueError:
+        builddb= builddb_from_json_file(options.builddir,
+                                        options.localbuilddir,
+                                        keep_locked= False)
+        assert_build_tag(builddb, buildtag)
+        # if assert_build_tag does sys.exit,
+        # builddb __del__ method should remove lockfiles
+        if new_state!="disabled":
+            builds=set((buildtag,))
+        else:
+            builds={ b for b in builddb.rec_linked_builds(buildtag)\
+                       if not builddb.tag_is_overlayed(b) }
+            if builds:
+                print("The following builds depend on build %s:" % buildtag)
+                print(" ".join(sorted(builds)))
+                # may raise EOFError:
+                try:
+                    sumolib.utils.ask_abort("Disabling %s would also disable "
+                                            "these.\nProceed ? " % buildtag,
+                                            options.yes or options.recursive)
+                except EOFError as e:
+                    # pylint: disable=raising-format-tuple
+                    raise annotate("%s. "
+                                   "You may want to use option '--yes' "
+                                   "to prevent this error.", e) from e
+            builds.add(buildtag)
+
+        for b in builds:
+            # may raise ValueError:
+            builddb.change_state(b, new_state)
+            # builddb __del__ method should remove lockfiles in case of an
+            # exception in the line above
+        builddb.json_save(None, options.verbose, options.dry_run)
+        # ^^^ does also unlock the file
+
+def subcmd_build_delete(arguments, options):
+    """implement "subcmd_build_delete".
+
+    May raise:
+        ValueError, IOError from builddb_from_json_file
+        EOFError, ValueError from delete_build
+    """
+    sumolib.cli.assert_options(catch_exceptions,  options, "builddir")
+    argspec= sumolib.cli.CmdSpecs()
+    argspec.add("BUILDTAGS", array= True, completion= sumolib.complete.builds)
+    args= sumolib.cli.process_args(arguments, argspec, options.list,
+                                   catch_exceptions)
+
+    if options.readonly:
+        sys.exit("--readonly forbids deleting a support")
+
+    # may raise IOError, ValueError:
+    builddb= builddb_from_json_file(options.builddir,
+                                    options.localbuilddir,
+                                    keep_locked= not options.dry_run)
+    # pylint: disable=no-member
+    for b in args.BUILDTAGS:
+        assert_build_tag(builddb, b)
+    # pylint: enable=no-member
+    # modifies and saves builddb and deletes directories:
+    # pylint: disable=no-member
+    # may raise EOFError, ValueError:
+    delete_build(builddb, args.BUILDTAGS,
+                 options.recursive,
+                 options.yes,
+                 options.verbose, options.dry_run)
+    builddb.json_save(None, options.verbose, options.dry_run)
+
+def subcmd_build_try(arguments, options):
+    """implement "subcmd_build_try".
+
+    May raise:
+        EOFError, ValueError, IOError, sumolib.JSON.ParseError
+            from db_from_repo
+        ValueError, IOError from builddb_from_json_file
+        ValueError, IOError from init_buildcache
+        ValueError from ModuleSpec.Specs.from_strings
+        ValueError from modulespecs_obj.assert_unique
+        KeyError, ValueError from db.sets_dict
+        ValueError id argument of "--detail" is wrong
+        re.error from RegexpMatcher
+    """
+    # pylint: disable=R0914
+    #                          Too many local variables
+    # pylint: disable=R0912
+    #                          Too many branches
+    # pylint: disable=R0915
+    #                          Too many statements
+    sumolib.cli.assert_options(catch_exceptions,  options, "dbdir")
+
+    argspec= sumolib.cli.CmdSpecs()
+    argspec.add("MODULES", array= True, optional= True,
+                completion= sumolib.complete.moduleversion)
+    args= sumolib.cli.process_args(arguments, argspec, options.list,
+                                   catch_exceptions)
+
+    sumolib.cli.assert_options(catch_exceptions,  options, "builddir")
+    buildtag= options.buildtag
+
+    # note that the RegexpPatcher compiles the regular expression:
+    # may raise re.error:
+    try:
+        exclude_matcher= sumolib.utils.RegexpMatcher(options.exclude_states)
+    except re.error as e:
+        # pylint: disable=raising-format-tuple
+        raise sumolib.utils.annotate("Error in --exclude-states option: %s", e)
+
+    modulespecs= []
+    if options.module:
+        modulespecs.extend(options.module)
+    if args.defined("MODULES"):
+        if "module" in options.append:
+            modulespecs.extend(args.MODULES) # pylint: disable=no-member
+        else:
+            modulespecs= args.MODULES # pylint: disable=no-member
+    if not modulespecs:
+        sys.exit("error: module specs missing")
+
+    # mspecs_from_build may raise AssertionError, ValueError:
+    # may raise ValueError:
+    modulespecs_obj= sumolib.ModuleSpec.Specs.from_strings(\
+                         modulespecs,
+                         mspecs_from_build(options))
+
+    if options.dump_modules:
+        dump_modules(modulespecs_obj)
+        sys.exit(0)
+
+    # may raise EOFError, IOError, ValueError, sumolib.JSON.ParseError:
+    (_, db)= db_from_repo(options)
+    # may raise IOError, ValueError:
+    builddb= builddb_from_json_file(options.builddir,
+                                    options.localbuilddir,
+                                    keep_locked= False,
+                                    must_exist= False)
+
+    # may raise IOError, ValueError:
+    buildcache= init_buildcache(options.scandb,
+                                builddb, db)
+
+    # ensure that each module is only mentioned once in the modulelist:
+    # may raise ValueError:
+    modulespecs_obj.assert_unique()
+
+    # gather a list of all modules that don't have an exact specification:
+    modules_not_exact_spec= \
+        [spec.modulename for spec in modulespecs_obj \
+                         if not spec.is_exact_spec()]
+
+    # convert modulespecs to a set dict:
+    # { modulename1 : set(version1,version2),
+    #   modulename2 : set(version1,version2),
+    # }
+    # may raise KeyError, ValueError:
+    sets_dict= db.sets_dict(modulespecs_obj)
+
+    # add all missing dependencies and complete the sets_dict:
+    added_modules= db.complete_sets_dict(sets_dict)
+
+    # examine the builds:
+    # was_built is a set of (modulename,versionname) or modules
+    #           that were built
+    # needed_by_others is a dict mapping
+    #           (depname,dep_version)->[(modulename,versionname,state)...]
+    #           where state is the build state of the "stable" or "testing"
+    #           build the modules share or None if they don't share such a
+    #           build.
+    was_built= set()
+    needed_by_others= {}
+
+    for modulename, moduleversions in sets_dict.items():
+                                           # ^ iterate on all modules
+        for versionname in moduleversions: # iterate on all versions
+            if buildcache.was_built(modulename,versionname):
+                was_built.add((modulename,versionname))
+            for depname in db.iter_dependencies(modulename, versionname):
+                for dep_version in sets_dict[depname]:
+                    s= needed_by_others.setdefault((depname,dep_version),
+                                                   [])
+                    s.append((modulename,versionname,
+                              buildcache.relation(modulename,versionname,
+                                                  depname, dep_version)))
+    # now build the report structure:
+    report= {}
+    # pylint: disable=too-many-nested-blocks
+    for modulename, moduleversions in sets_dict.items():
+        mdict= report.setdefault(modulename, {})
+        no_of_versions= len(moduleversions)
+        for versionname in moduleversions:
+            d= {}
+            mdict[versionname]= d
+            d["built"]= (modulename,versionname) in was_built
+            l= needed_by_others.get((modulename,versionname))
+            if l is not None:
+                dd= d.setdefault("dependents", {})
+                depmods_versioncount= {}
+                for (m,v,state) in l:
+                    # Note that the state can never be "disabled", "incomplete"
+                    # or "unstable". All these builds are ignored when the
+                    # buildcache object is created.
+                    depmods_versioncount.setdefault(m, 0)
+                    if state is None:
+                        # this means that the modules share no common build
+                        # with the state "stable" or "testing":
+                        state= "state: not tested"
+                    else:
+                        state= "state: %s" % state
+                    if no_of_versions>1:
+                        # do only apply the exclude_matcher when there is
+                        # more than one possible version of module
+                        # 'modulename':
+                        if exclude_matcher.search(state):
+                            continue
+                    depmods_versioncount[m]+= 1
+                    dd["%s:%s" % (m,v)]= state
+                if min(depmods_versioncount.values())==0:
+                    # all versions of a dependent were removed,
+                    # remove modulename:versionname completely:
+                    del mdict[versionname]
+        if not mdict:
+            sys.exit("error: your '--exclude-states' option removes "
+                     "*ALL* versions of module '%s'. You may change "
+                     "the REGEXP or specify an exact version "
+                     "for the module to avoid this error." % \
+                     modulename)
+
+    if options.detail:
+        _errmsg= "error, value for '--detail' must be 1, 2 or 3"
+        try:
+            detail= int(options.detail)
+        except ValueError as e:
+            raise ValueError(_errmsg) from e
+        if detail not in (1,2,3):
+            raise ValueError(_errmsg)
+        wanted= set(modules_not_exact_spec)
+        wanted.update(added_modules)
+        if (detail==1) and wanted:
+            print("Possible versions for unspecified/missing modules:\n")
+            for m in sorted(wanted):
+                l= ["%-19s" % m]
+                l.extend(sorted(report[m].keys()))
+                st= " ".join(l)
+                print("\n".join(textwrap.wrap(st, width=70,
+                                              subsequent_indent=" "*20)))
+            print()
+        elif (detail==2) and wanted:
+            short_report= {}
+            for (k,v) in report.items():
+                if k in wanted:
+                    short_report[k]= v
+            report= short_report
+            print("Details on unspecified/missing modules:\n")
+            sumolib.JSON.dump(short_report)
+        elif detail>=3:
+            print("Details on all modules:\n")
+            sumolib.JSON.dump(report)
+
+    if modules_not_exact_spec:
+        print("Not all modules have exactly specified versions.", end=' ')
+        print("These modules need an ")
+        print("exact version specification:")
+        for m in sorted(modules_not_exact_spec):
+            versions= list(report[m].keys())
+            if len(versions)>1:
+                print("    %s" % m)
+            else:
+                print("    %-20s -> suggested version: %s" % \
+                      (m,versions[0]))
+        print()
+
+    if added_modules:
+        print("Not all dependencies were included in module", end=' ')
+        print("specifications, these modules")
+        print("have to be added:\n   ", end=' ')
+        print("\n    ".join(sorted(added_modules)))
+        print()
+
+    if buildtag is None:
+        buildtag= builddb_generate_tag(builddb, options.buildtag_stem,
+                                       bool(options.localbuilddir))
+        print("Command 'new' would create build with tag '%s'\n" % \
+              buildtag)
+
+    if not modules_not_exact_spec and not added_modules:
+        print("Your module specifications are complete. You can use", end=' ')
+        print("these with command")
+        print("'new' to create a new build.")
+    else:
+        print("Your module specifications are still incomplete,", end=' ')
+        print("command 'new' can not")
+        print("be used with these.")
+
+def subcmd_build_remake(arguments, options):
+    """recompile a build.
+
+    This calls "make clean" and tnen "make all".
+
+    Note that this DOES NOT call "make distclean".
+
+    If you want this you can do this manually:
+
+    make distclean -f MAKEFILE
+    make config -f MAKEFILE
+    make all -f MAKEFILE
+
+    May raise:
+        IOError, ValueError from builddb_from_json_file
+        IOError from simple_call_make
+    """
+    sumolib.cli.assert_options(catch_exceptions,  options, "builddir")
+    argspec= sumolib.cli.CmdSpecs()
+    argspec.add("BUILDTAG", completion= sumolib.complete.builds)
+    args= sumolib.cli.process_args(arguments, argspec, options.list,
+                                   catch_exceptions)
+
+    if options.buildtag:
+        sys.exit("error: you cannot use --buildtag here")
+    # may raise IOError, ValueError:
+    builddb= builddb_from_json_file(options.builddir,
+                                    options.localbuilddir,
+                                    keep_locked= not options.dry_run)
+    buildtag= args.BUILDTAG # pylint: disable=no-member
+    builddb.change_state(buildtag, "unstable")
+    builddb.json_save(None, options.verbose, options.dry_run)
+    # ^^^ does also unlock the file
+    builddir= get_builddir(options.builddir, options.localbuilddir)
+    # may raise IOError:
+    simple_call_make(builddir,
+                     makefilename(builddir, buildtag),
+                     "clean",
+                     options.makeflags if options.makeflags else [],
+                     options.progress,
+                     options.verbose, options.dry_run)
+    # may raise IOError:
+    simple_call_make(builddir,
+                     makefilename(builddir, buildtag),
+                     "all",
+                     options.makeflags if options.makeflags else [],
+                     options.progress,
+                     options.verbose, options.dry_run)
+    # may raise IOError, ValueError:
+    builddb= builddb_from_json_file(options.builddir,
+                                    options.localbuilddir,
+                                    keep_locked= not options.dry_run)
+    builddb.change_state(buildtag, "testing")
+    builddb.json_save(None, options.verbose, options.dry_run)
+    # ^^^ does also unlock the file
+
+def subcmd_build_new(arguments, options):
+    """implement "subcmd_build_new".
+
+    May raise:
+        EOFError, IOError, ValueError, umolib.JSON.ParseError
+            from db_from_repo
+        IOError, ValueError, from builddb_from_json_file
+        ValueError from ModuleSpec.Specs.from_strings
+        ValueError from modulespecs_obj.to_dist_dict
+        KeyError, ValueError from db.assert_complete_modulelist
+    """
+    # pylint: disable=R0912
+    #                          Too many branches
+    # pylint: disable=R0915
+    #                          Too many statements
+    sumolib.cli.assert_options(catch_exceptions,  options, "dbdir")
+
+    argspec= sumolib.cli.CmdSpecs()
+    argspec.add("MODULES", array= True, optional= True,
+                completion= sumolib.complete.moduleversion)
+    args= sumolib.cli.process_args(arguments, argspec, options.list,
+                                   catch_exceptions)
+
+    sumolib.cli.assert_options(catch_exceptions,  options, "builddir")
+    if options.readonly:
+        sys.exit("--readonly forbids creating a new build")
+
+    buildtag= options.buildtag
+
+    modulespecs= []
+    if options.module:
+        modulespecs.extend(options.module)
+    if args.defined("MODULES"):
+        if "module" in options.append:
+            modulespecs.extend(args.MODULES) # pylint: disable=no-member
+        else:
+            modulespecs= args.MODULES # pylint: disable=no-member
+    if not modulespecs:
+        sys.exit("error: module specs missing")
+
+    # may raise EOFError, IOError, ValueError, sumolib.JSON.ParseError:
+    (_, db)= db_from_repo(options)
+
+    # mspecs_from_build may raise AssertionError, ValueError:
+    # may raise ValueError:
+    modulespecs_obj= sumolib.ModuleSpec.Specs.from_strings(\
+                         modulespecs,
+                         mspecs_from_build(options))
+
+    if options.dump_modules:
+        dump_modules(modulespecs_obj)
+        sys.exit(0)
+
+    # may raise ValueError:
+    dist_dict= modulespecs_obj.to_dist_dict()
+    # may raise KeyError, ValueError:
+    db.assert_complete_modulelist(dist_dict)
+
+    # may raise IOError, ValueError:
+    builddb= builddb_from_json_file(options.builddir,
+                                    options.localbuilddir,
+                                    keep_locked= not options.dry_run,
+                                    must_exist= False)
+
+    # now test if there already is a build that satisfies the module
+    # specifications:
+    matching_builddb= builddb.filter_by_modulespecs(modulespecs_obj)
+    matching_tags= None
+    if not matching_builddb.is_empty():
+        # take only builds that are "testing" or "stable":
+        matching_tags= [b for b in matching_builddb.iter_builds() \
+                        if builddb.is_testing_or_stable(b)]
+    if matching_tags:
+        if options.no_err_build_exists:
+            # if --no-err-build-exists is given, an already existing build is
+            # not trated as an error:
+            notemsg("found existing build(s): %s" % \
+                    (" ".join(sorted(matching_tags))))
+            return
+
+        if len(matching_tags)<=1:
+            st= ("There already exists a build %s that matches "
+                 "your module specification. Creation of new "
+                 "build aborted.") % matching_tags[0]
+        else:
+            st= ("There already exist builds that match "
+                 "your module specification: %s. Creation of new "
+                 "build aborted.") % (" ".join(sorted(matching_tags)))
+        sys.exit(st)
+
+    if buildtag is None:
+        buildtag= builddb_generate_tag(builddb, options.buildtag_stem,
+                                       bool(options.localbuilddir))
+
+    if options.progress:
+        notemsg("creating build '%s'" % buildtag)
+
+    if builddb.has_build_tag(buildtag):
+        # builddb __del__ method should remove lockfiles
+        sys.exit("error: buildtag \"%s\" already taken" % buildtag)
+    # create a new build in builddb, initial state is "unstable":
+    builddb.new_build(buildtag, "incomplete")
+    # add all modules specified by dist_dict to builddb under tag build_tag:
+    add_modules(dist_dict, db, builddb, buildtag)
+    builddb.json_save(None, options.verbose, options.dry_run)
+    # ^^^ does also unlock the file
+
+    # may raise IOError, ValueError:
+    create_modules(dist_dict, db, builddb,
+                   get_builddir(options.builddir, options.localbuilddir),
+                   buildtag,
+                   options.extra,
+                   options.no_checkout,
+                   options.progress,
+                   options.verbose, options.dry_run)
+    # may raise IOError, ValueError:
+    if not options.dry_run:
+        builddb= builddb_from_json_file(options.builddir,
+                                        options.localbuilddir,
+                                        keep_locked= not options.dry_run,
+                                        must_exist= False)
+    builddb.change_state(buildtag, "unstable")
+    builddb.json_save(None, options.verbose, options.dry_run)
+    # ^^^ does also unlock the file
+    if not options.no_checkout:
+        create_makefile(dist_dict, db,
+                        builddb,
+                        buildtag,
+                        options.progress,
+                        options.verbose,
+                        options.dry_run)
+
+    if not options.no_make and not options.no_checkout:
+        # call_make will set the build state to "testing" if it succeeds:
+        # may raise IOError, ValueError:
+        call_make(buildtag, options)
+
+    notemsg("build '%s' created" % buildtag)
+
+def subcmd_build_find(arguments, options):
+    """implement "subcmd_build_find".
+
+    May raise:
+        ValueError, IOError from builddb_from_json_file
+        ValueError from ModuleSpec.Specs.from_strings
+    """
+    # pylint: disable=too-many-statements, too-many-arguments
+    # pylint: disable=too-many-branches
+    def print_match_results(dict_, builddb, sort_order,
+                            detail,
+                            brief, all_builds):
+        """print results from builddb.check_by_modulespecs()."""
+        def keyfunc(b):
+            """for sorting."""
+            return dict_[b]["matched"]*2 + dict_[b]["wrongversion"]
+        if not dict_:
+            return
+        build_tags= filter_buildtags(dict_.keys(), builddb, all_builds)
+        if sort_order=="rank":
+            # first sort alphabetically:
+            build_tags.sort()
+            # now sort by match rank
+            build_tags.sort(key= keyfunc, reverse= True)
+        else:
+            build_tags= sort_buildtags(build_tags, builddb, sort_order)
+        if detail<=1:
+            # remove builds with missing matches
+            build_tags= [b for b in build_tags if dict_[b]["missing"]==0]
+        if detail<=0:
+            # remove builds with wrong versions
+            build_tags= [b for b in build_tags if dict_[b]["wrongversion"]==0]
+        if brief:
+            print("\n".join(build_tags))
+        else:
+            for buildtag in build_tags:
+                print(buildtag)
+                module_dict= dict_[buildtag]["modules"]
+                for modulename in sorted(module_dict.keys()):
+                    print("    %-2s %s" % module_dict[modulename])
+
+    sumolib.cli.assert_options(catch_exceptions,  options, "dbdir")
+
+    argspec= sumolib.cli.CmdSpecs()
+    argspec.add("MODULES", array= True, optional= True,
+                completion= sumolib.complete.moduleversion)
+    args= sumolib.cli.process_args(arguments, argspec, options.list,
+                                   catch_exceptions)
+
+    sumolib.cli.assert_options(catch_exceptions,  options, "builddir")
+
+    modulespecs= []
+    if options.module:
+        modulespecs.extend(options.module)
+    if args.defined("MODULES"):
+        if "module" in options.append:
+            modulespecs.extend(args.MODULES) # pylint: disable=no-member
+        else:
+            modulespecs= args.MODULES # pylint: disable=no-member
+    if not modulespecs:
+        sys.exit("error: module specs missing")
+
+    # mspecs_from_build may raise AssertionError, ValueError:
+    # may raise ValueError:
+    modulespecs_obj= sumolib.ModuleSpec.Specs.from_strings(\
+                         modulespecs,
+                         mspecs_from_build(options))
+
+    # may raise IOError, ValueError:
+    builddb= builddb_from_json_file(options.builddir,
+                                    options.localbuilddir,
+                                    keep_locked= False)
+
+    if options.dump_modules:
+        dump_modules(modulespecs_obj)
+        sys.exit(0)
+
+    detail= 0
+    if options.detail:
+        _errmsg= "error, value for '--detail' must be 0, 1 or 2"
+        try:
+            detail= int(options.detail)
+        except ValueError as e:
+            raise ValueError(_errmsg) from e
+        if detail not in (0,1,2):
+            raise ValueError(_errmsg)
+
+    match_results= builddb.check_by_modulespecs(modulespecs_obj)
+
+    if not match_results:
+        print("no matching builds found")
+        return
+    sort_order= sort_buildtag_order(options)
+    if sort_order=="alphabetically":
+        sort_order= "rank"
+    print_match_results(match_results,
+                        builddb, sort_order, detail, options.brief,
+                        options.all_builds)
+
+def subcmd_build_use(arguments, options):
+    """implement "subcmd_build_use".
+
+    May raise:
+        EOFError, IOError, ValueError, sumolib.JSON.ParseError
+            from db_from_repo
+        KeyError from db.assert_complete_modulelist
+        ValueError, IOError from builddb_from_json_file
+        ValueError from ModuleSpec.Specs.from_strings
+        ValueError from modulespecs_obj.to_dist_dict
+    """
+    # pylint: disable=too-many-branches
+    # pylint: disable=too-many-statements
+    sumolib.cli.assert_options(catch_exceptions,  options, "dbdir")
+
+    argspec= sumolib.cli.CmdSpecs()
+    argspec.add("MODULES", array= True, optional= True,
+                completion= sumolib.complete.moduleversion)
+    args= sumolib.cli.process_args(arguments, argspec, options.list,
+                                   catch_exceptions)
+
+    sumolib.cli.assert_options(catch_exceptions,  options, "builddir")
+
+    modulespecs= []
+    if options.module:
+        modulespecs.extend(options.module)
+    if args.defined("MODULES"):
+        if "module" in options.append:
+            modulespecs.extend(args.MODULES) # pylint: disable=no-member
+        else:
+            modulespecs= args.MODULES # pylint: disable=no-member
+    if not modulespecs:
+        sys.exit("error: module specs missing")
+
+    # mspecs_from_build may raise AssertionError, ValueError:
+    # may raise ValueError:
+    modulespecs_obj= sumolib.ModuleSpec.Specs.from_strings(\
+                         modulespecs,
+                         mspecs_from_build(options))
+
+    if options.dump_modules:
+        dump_modules(modulespecs_obj)
+        sys.exit(0)
+
+    module_list_complete= None
+    # ^^^ <None> until we check if the module list is complete
+
+    # may raise EOFError, ValueError, IOError, sumolib.JSON.ParseError:
+    (_, db)= db_from_repo(options)
+
+    if not options.buildtag:
+        # unspecifed build_tag, look if the module list is complete:
+        # may raise ValueError:
+        dist_dict= modulespecs_obj.to_dist_dict()
+        try:
+            # may raise KeyError, ValueError:
+            db.assert_complete_modulelist(dist_dict)
+            module_list_complete= True
+        except ValueError:
+            module_list_complete= False
+
+    output= options.output
+    if not output:
+        _assume_dir("configure", options.dry_run)
+        output= os.path.join("configure","RELEASE")
+
+    # may raise IOError, ValueError:
+    builddb= builddb_from_json_file(options.builddir,
+                                    options.localbuilddir,
+                                    keep_locked= False,
+                                    must_exist= False)
+
+    if options.dump_modules:
+        dump_modules(modulespecs_obj)
+        sys.exit(0)
+
+    apprelease(options.buildtag,
+               module_list_complete,
+               modulespecs_obj,
+               builddb,
+               db,
+               scan_aliases(options.alias),
+               options.extra,
+               output, options.verbose, options.dry_run)
+
+# -----------------------------------------------
+# command processing
+# -----------------------------------------------
+
+def maincmd_config(commands, options):
+    """implement "config" maincommand.
+
+    May raise:
+        IOError, TypeError, ValueError from subcmd_config_list
+        EOFError, IOError, TypeError, ValueError from subcmd_config_standalone
+    """
+    # pylint: disable=R0911
+    #                          Too many return statements
+    # pylint: disable=R0912
+    #                          Too many branches
+
+    # note: the following function may exit the program when options.list is
+    # given:
+    (cmd, c_args)= sumolib.cli.process_cmd(commands, KNOWN_CONFIG_COMMANDS,
+                                           options.list)
+
+    if cmd=="list":
+        # may raise IOError, TypeError, ValueError:
+        subcmd_config_list(c_args, options)
+        return
+
+    # pylint: disable=consider-using-in
+    if cmd=="make" or cmd=="show":
+        # may raise EOFError, IOError, TypeError, ValueError:
+        subcmd_config_make_show(cmd, c_args, options)
+        return
+    if cmd=="standalone":
+        # may raise EOFError, IOError, TypeError, ValueError:
+        subcmd_config_standalone(c_args, options)
+        return
+    if cmd=="local":
+        # may raise EOFError, IOError, TypeError, ValueError:
+        subcmd_config_local(c_args, options)
+        return
+    if cmd=="new":
+        # may raise IOError, TypeError, ValueError:
+        subcmd_config_new(c_args, options)
+        return
+
+def maincmd_lock(arguments, options):
+    """implement "lock" maincommand.
+
+    May raise:
+        sumolib.lock.LockedError, sumolib.lock.AccessError
+    """
+    if options.readonly:
+        sys.exit("--readonly forbids editing a database file")
+
+    argspec= sumolib.cli.CmdSpecs()
+    argspec.add("FILE", completion= sumolib.cli.complete_file)
+    args= sumolib.cli.process_args(arguments, argspec, options.list,
+                                   catch_exceptions)
+
+    l= sumolib.lock.MyLock(args.FILE) # pylint: disable=no-member
+    # may raise sumolib.lock.LockedError, sumolib.lock.AccessError:
+    l.lock()
+
+def maincmd_unlock(arguments, options):
+    """implement "unlock" maincommand."""
+    if options.readonly:
+        sys.exit("--readonly forbids editing a database file")
+    argspec= sumolib.cli.CmdSpecs()
+    argspec.add("FILE", completion= sumolib.cli.complete_file)
+    args= sumolib.cli.process_args(arguments, argspec, options.list,
+                                   catch_exceptions)
+
+    l= sumolib.lock.MyLock(args.FILE) # pylint: disable=no-member
+    lock_found= False
+    try:
+        l.lock()
+    except sumolib.lock.LockedError as _:
+        lock_found= True
+    except sumolib.lock.AccessError as _:
+        # we cannot create a lock but it didn't exist anyway.
+        pass
+    if not lock_found:
+        l.unlock()
+        # pylint: disable=no-member
+        sys.exit("error, cannot unlock '%s' since file wasn't locked" % \
+                 args.FILE)
+    l.unlock(force= True)
+
+def maincmd_db(commands, options):
+    """implement db maincommand."""
+    # pylint: disable=R0914
+    #                          Too many local variables
+    # pylint: disable=R0912
+    #                          Too many branches
+    # pylint: disable=R0911
+    #                          Too many return statements
+    # pylint: disable=R0915
+    #                          Too many statements
+    if options.nolock:
+        sumolib.lock.use_lockfile= False
+
+    # note: the following function may exit the program when options.list is
+    # given:
+    (cmd, c_args)= sumolib.cli.process_cmd(commands, KNOWN_DB_COMMANDS,
+                                           options.list)
+
+    if cmd=="edit":
+        # may raise EOFError, ValueError, IOError,
+        #     lock.LockedError, lock.AccessError:
+        subcmd_db_edit(c_args, options)
+        return
+
+    if cmd=="convert":
+        # may raise IOError, KeyError, ValueError:
+        subcmd_db_convert(c_args, options)
+        return
+
+    if cmd=="modconvert":
+        # may raise KeyError, ValueError:
+        subcmd_db_modconvert(c_args, options)
+        return
+
+    if cmd=="appconvert":
+        # may raise AssertionError:
+        subcmd_db_appconvert(c_args, options)
+        return
+
+    if cmd=="format":
+        # may raise IOError, ValueError, sumolib.JSON.ParseError:
+        subcmd_db_format(c_args, options)
+        return
+
+    if cmd=="weight":
+        # may raise IOError, ValueError, sumolib.JSON.ParseError:
+        subcmd_db_weight(c_args, options)
+        return
+
+    if cmd=="extra":
+        # may raise IOError, ValueError, sumolib.JSON.ParseError:
+        subcmd_db_extra(c_args, options)
+        return
+
+    if cmd=="check":
+        # may raise IOError, ValueError, sumolib.JSON.ParseError:
+        subcmd_db_check(c_args, options)
+        return
+
+    if cmd=="merge":
+        # may raise IOError, ValueError, sumolib.JSON.ParseError:
+        subcmd_db_merge(c_args, options)
+        return
+
+    if cmd=="alias-add":
+        # may raise IOError, ValueError, sumolib.JSON.ParseError:
+        subcmd_db_alias_add(c_args, options)
+        return
+
+    if cmd=="dependency-add":
+        # may raise IOError, ValueError, sumolib.JSON.ParseError:
+        subcmd_db_dependency_add(c_args, options)
+        return
+
+    if cmd=="dependency-delete":
+        # may raise IOError, ValueError, sumolib.JSON.ParseError:
+        subcmd_db_dependency_delete(c_args, options)
+        return
+
+    if cmd=="commands":
+        subcmd_db_commands(c_args, options)
+        return
+
+    if cmd=="make-recipes":
+        subcmd_db_make_recipes(c_args, options)
+        return
+
+    if cmd=="releasefilename":
+        # may raise IOError, ValueError, sumolib.JSON.ParseError:
+        subcmd_db_releasefilename(c_args, options)
+        return
+
+    # pylint: disable=consider-using-in
+    if cmd=="cloneversion" or cmd=="replaceversion":
+        # may raise EOFError, IOError, KeyError, ValueError,
+        #     sumolib.JSON.ParseError:
+        subcmd_db_clone_replace_version(cmd, c_args, options)
+        return
+
+    if cmd=="clonemodule":
+        # may raise IOError, ValueError, sumolib.JSON.ParseError:
+        subcmd_db_clonemodule(c_args, options)
+        return
+
+    if cmd=="list":
+        # may raise IOError, KeyError, ValueError, sumolib.JSON.ParseError:
+        subcmd_db_list(c_args, options)
+        return
+
+    if cmd=="show":
+        # may raise ValueError, IOError, KeyError,
+        # sumolib.JSON.ParseError
+        subcmd_db_show(c_args, options)
+        return
+
+    if cmd=="find":
+        # may raise IOError, ValueError, sumolib.JSON.ParseError:
+        subcmd_db_find(c_args, options)
+        return
+
+def maincmd_build(commands, options):
+    """implement build maincommand."""
+    # pylint: disable=R0912
+    #                          Too many branches
+    # pylint: disable=R0911
+    #                          Too many return statements
+    # pylint: disable=R0915
+    #                          Too many statements
+    # pylint: disable=R0914
+    #                          Too many local variables
+    if options.nolock:
+        sumolib.lock.use_lockfile= False
+
+    # make the build directories absolute:
+    if options.builddir:
+        options.builddir= os.path.abspath(options.builddir)
+    if options.localbuilddir:
+        options.localbuilddir= os.path.abspath(options.localbuilddir)
+
+    # note: the following function may exit the program when options.list is
+    # given:
+    (cmd, c_args)= sumolib.cli.process_cmd(commands, KNOWN_BUILD_COMMANDS,
+                                           options.list)
+
+    if not options.extra:
+        # if extra lines are not given, make this option an empty list. This is
+        # needed since we iterate over this valiable later on when the RELEASE
+        # file is generated.
+        options.extra= []
+
+    if cmd=="list":
+        # may raise IOError, ValueError:
+        subcmd_build_list(c_args, options)
+        return
+
+    if cmd=="show":
+        # may raise IOError, ValueError:
+        subcmd_build_show(c_args, options)
+        return
+
+    if cmd=="showmodules":
+        # may raise IOError, ValueError:
+        subcmd_build_showmodules(c_args, options)
+        return
+
+    if cmd=="getmodules":
+        # may raise IOError, ValueError:
+        subcmd_build_getmodules(c_args, options)
+
+    if cmd=="showdependencies":
+        # may raise IOError, ValueError:
+        subcmd_build_showdeps(c_args, options, cmd)
+        return
+
+    if cmd=="showdependents":
+        # may raise IOError, ValueError:
+        subcmd_build_showdeps(c_args, options, cmd)
+        return
+
+    if cmd=="state":
+        # may raise EOFError, IOError, ValueError
+        subcmd_build_state(c_args, options)
+        return
+
+    if cmd=="delete":
+        # may raise ValueError:
+        subcmd_build_delete(c_args, options)
+        return
+
+    if cmd=="try":
+        # may raise EOFError, IOError, KeyError, re.error
+        #           sumolib.JSON.ParseError, ValueError:
+        subcmd_build_try(c_args, options)
+        return
+
+    if cmd=="new":
+        # may raise KeyError, ValueError:
+        subcmd_build_new(c_args, options)
+        return
+
+    if cmd=="remake":
+        # may raise IOError, ValueError:
+        subcmd_build_remake(c_args, options)
+        return
+
+    if cmd=="find":
+        # may raise ValueError:
+        subcmd_build_find(c_args, options)
+        return
+
+    if cmd=="use":
+        # may raise IOError, KeyError, ValueError:
+        subcmd_build_use(c_args, options)
+        return
+
+# -----------------------------------------------
+# help text display
+# -----------------------------------------------
+
+def print_summary():
+    """print a short summary of the scripts function."""
+    print("%-20s: a tool for managing support EPICS trees \n" % \
+          script_shortname())
+
+def _test():
+    """does a self-test of some functions defined here."""
+    print("performing self test...")
+    # pylint: disable= import-outside-toplevel
+    import doctest
+    doctest.testmod()
+    print("done!")
+
+help_topics= {
+        "":"""
+No help topic given. Use
+  "help <topic>" to get help on a topic.
+
+Possible topics are:
+
+  maincommand                : explain and list maincommands
+  completion                 : how to install and use command completion
+  pager                      : how to configure the help pager
+  configuration              : how and where configuration data is stored
+  options                    : explain what an option is
+  listoptions                : list all options
+  <maincommand>              : help for a specific maincommand
+  <maincommand> <subcommand> : help for a subcommand of a maincommand
+  <subcommand>               : help for a subcommand
+""",
+        "maincommand":"""
+A maincommand provides a grouping for the various commands of sumo.
+
+While some maincommands can be used without a subcommand, others must be
+followed by a subcommand. These are the known maincommands:
+
+  help [maintopic] [subtopic] - show help for a topic
+  config [subcommand]         - operations on configuration files
+  lock FILE                   - just lock a file
+  unlock FILE                 - unlock a file
+  db [subcommand]             - operation on the dependency database
+  build [subcommand]          - manage the build database and builds
+
+For all of the db subcommands you have to specify the dependency database
+directory with option --dbdir or a configuration file.
+
+For all of the build subcommands you have to specify the dependency database
+directory and the build directory with --dbdir and --builddir or a
+configuration file.
+
+Use "help [maincommand] for further details.
+""",
+        "completion":
+            doc_completion['Command completion'],
+        "completion-script":"""
+_sumo()
+{
+    local cnt
+    local words
+
+    if [ $(basename $SHELL) = "bash" ]; then
+        # The following function is only available in bash. It is needed in
+        # order to treat the ":" character within modulespecs like
+        # "MCAN:R2-3":
+        __reassemble_comp_words_by_ref : words cnt
+    else
+        # With zsh the ":" character doesn't need special treatment here:
+        words=( ${COMP_WORDS[@]} )
+        cnt=${#words[@]}
+    fi
+
+    if [[ $COMP_LINE == *[[:space:]] ]]; then
+      # When the last entered character was a space before <TAB> was pressed,
+      # this final space cannot be seen by sumo (the shell seems to filter it).
+      # In order to communicate this to sumo, we use option --listnew instead
+      # of option --list:
+      words+=(--listnew)
+    else
+      # Append option "--list" which tells sumo that we want command
+      # completion:
+      words+=(--list)
+    fi
+
+    # Note that in sumo in module cli, environment variable SHELL is evaluated.
+    # If it is "zsh", the completion output of sumo for modulespecs like
+    # "MCAN:R2-3" is different.
+
+    ## the resulting completions should be put into this array
+    COMPREPLY=( $( compgen -W "$( ${words[@]} )" ) )
+
+}
+
+complete -F _sumo sumo
+""",
+        "completion-line":"""
+_sumo()
+{
+    local cnt;
+    local words;
+    if [ $(basename $SHELL) = "bash" ]; then
+        __reassemble_comp_words_by_ref : words cnt;
+    else
+        words=( ${COMP_WORDS[@]} );
+        cnt=${#words[@]};
+    fi;
+    if [[ $COMP_LINE == *[[:space:]] ]]; then
+      words+=(--listnew);
+    else
+      words+=(--list);
+    fi;
+    COMPREPLY=( $( compgen -W "$( ${words[@]} )" ) );
+};
+complete -F _sumo sumo
+""",
+        "pager":
+            doc_pager['The help pager'],
+        "configuration":
+            doc_configuration['Configuration Files'],
+
+        "options":"""
+Options always start with a dash "-". All options have one of these two forms:
+    -<letter>
+    --<string>
+
+Some options require an option argument.
+
+You get help for all command line options with:
+
+sumo -h all
+
+You get help for a specific option with:
+
+sumo -h option
+""",
+        "listoptions":"""
+You can display a list of all options with:
+
+sumo -h
+""",
+        "help"  :
+            doc_commands['maincommands']['help COMMAND'],
+        "config":
+            doc_commands['maincommands']['config SUBCOMMAND'],
+        "lock":
+            doc_commands['maincommands']['lock FILE'],
+        "unlock":
+            doc_commands['maincommands']['unlock FILE'],
+        "db":
+            doc_commands['maincommands']['db SUBCOMMAND'],
+        "build":
+            doc_commands['maincommands']['build SUBCOMMAND'],
+
+        "config list":
+            doc_commands['subcommands for maincommand "config"']\
+                             ['config list'],
+        "config show":
+            doc_commands['subcommands for maincommand "config"']\
+                             ['config show [OPTIONNAMES]'],
+        "config make":
+            doc_commands['subcommands for maincommand "config"']\
+                             ['config make FILENAME [OPTIONNAMES]'],
+
+        "config new":
+            doc_commands['subcommands for maincommand "config"']\
+                             ['config new DIRECTORY TEMPLATE'],
+        "config standalone":
+            doc_commands['subcommands for maincommand "config"']\
+                             ['config standalone DIRECTORY'],
+        "config local":
+            doc_commands['subcommands for maincommand "config"']\
+                             ['config local DIRECTORY'],
+
+        "db convert":
+            doc_commands['subcommands for maincommand "db"']\
+                             ['db convert SCANFILE'],
+        "db appconvert":
+            doc_commands['subcommands for maincommand "db"']\
+                             ['db appconvert SCANFILE'],
+        "db modconvert":
+            doc_commands['subcommands for maincommand "db"']\
+                             ['db modconvert SCANFILE MODULES'],
+        "db edit":
+            doc_commands['subcommands for maincommand "db"']\
+                             ['db edit'],
+        "db format":
+            doc_commands['subcommands for maincommand "db"']\
+                             ['db format'],
+        "db weight":
+            doc_commands['subcommands for maincommand "db"']\
+                             ['db weight WEIGHT MODULES'],
+        "db extra":
+            doc_commands['subcommands for maincommand "db"']\
+                             ['db extra MODULE [LINES]'],
+        "db alias-add":
+            doc_commands['subcommands for maincommand "db"']\
+                             ['db alias-add MODULE DEPENDENCY ALIAS'],
+        "db dependency-delete":
+            doc_commands['subcommands for maincommand "db"']\
+                             ['db dependency-delete MODULE DEPENDENCY'],
+        "db dependency-add":
+            doc_commands['subcommands for maincommand "db"']\
+                             ['db dependency-add MODULE DEPENDENCY'],
+        "db commands":
+            doc_commands['subcommands for maincommand "db"']\
+                             ['db commands MODULE LINES'],
+        "db make-recipes":
+            doc_commands['subcommands for maincommand "db"']\
+                             ['db make-recipes MODULE [TARGET] [LINES]'],
+        "db list":
+            doc_commands['subcommands for maincommand "db"']\
+                             ['db list MODULES'],
+        "db show":
+            doc_commands['subcommands for maincommand "db"']\
+                             ['db show MODULES'],
+        "db find":
+            doc_commands['subcommands for maincommand "db"']\
+                             ['db find REGEXP'],
+        "db check":
+            doc_commands['subcommands for maincommand "db"']\
+                             ['db check'],
+        "db merge":
+            doc_commands['subcommands for maincommand "db"']\
+                             ['db merge DB'],
+        "db cloneversion":
+            doc_commands['subcommands for maincommand "db"']\
+                             ['db cloneversion MODULE OLD-VERSION '+\
+                              'NEW-VERSION [SOURCESPEC]'],
+        "db releasefilename":
+            doc_commands['subcommands for maincommand "db"']\
+                             ['db releasefilename MODULE RELEASEFILENAME'],
+        "db replaceversion":
+            doc_commands['subcommands for maincommand "db"']\
+                             ['db replaceversion '+\
+                              'MODULE OLD-VERSION NEW-VERSION'],
+        "db clonemodule":
+            doc_commands['subcommands for maincommand "db"']\
+                             ['db clonemodule OLD-MODULE '+\
+                              'NEW-MODULE [VERSIONS]'],
+
+        "build try":
+            doc_commands['subcommands for maincommand "build"']\
+                             ['build try MODULES'],
+        "build new":
+            doc_commands['subcommands for maincommand "build"']\
+                             ['build new MODULES'],
+        "build remake":
+            doc_commands['subcommands for maincommand "build"']\
+                             ['build remake BUILDTAG'],
+        "build find":
+            doc_commands['subcommands for maincommand "build"']\
+                             ['build find MODULES'],
+        "build getmodules":
+            doc_commands['subcommands for maincommand "build"']\
+                             ['build getmodules BUILDTAG [MODULES]'],
+        "build use":
+            doc_commands['subcommands for maincommand "build"']\
+                             ['build use MODULES'],
+        "build list":
+            doc_commands['subcommands for maincommand "build"']\
+                             ['build list'],
+        "build show":
+            doc_commands['subcommands for maincommand "build"']\
+                             ['build show BUILDTAG'],
+        "build showmodules":
+            doc_commands['subcommands for maincommand "build"']\
+                             ['build showmodules [BUILDTAG]'],
+        "build showdependencies":
+            doc_commands['subcommands for maincommand "build"']\
+                             ['build showdependencies [BUILDTAG]'],
+        "build showdependents":
+            doc_commands['subcommands for maincommand "build"']\
+                             ['build showdependents [BUILDTAG]'],
+        "build state":
+            doc_commands['subcommands for maincommand "build"']\
+                             ['build state BUILDTAG [NEW-STATE]'],
+        "build delete":
+            doc_commands['subcommands for maincommand "build"']\
+                             ['build delete BUILDTAGS'],
+}
+
+option_help_topics= {
+        "help":
+            doc_options['Options']\
+                       ['``-h [OPTIONS], --help [OPTIONS]``'],
+        "summary":
+            doc_options['Options']\
+                       ['``--summary``'],
+        "test":
+            doc_options['Options']\
+                       ['``--test``'],
+        "config":
+            doc_options['Options']\
+                       ['``-c FILE, --config FILE``'],
+        "no_default_config":
+            doc_options['Options']\
+                       ['``-C, --no-default-config``'],
+        "disable_loading":
+            doc_options['Options']\
+                       ['``--disable-loading``'],
+        "append":
+            doc_options['Options']\
+                       ['``-A, --append OPTIONNAME``'],
+        "#preload":
+            doc_options['Options']\
+                       ['``--#preload FILES``'],
+        "#opt_preload":
+            doc_options['Options']\
+                       ['``--#opt-preload FILES``'],
+        "#postload":
+            doc_options['Options']\
+                       ['``--#postload FILES``'],
+        "#opt_postload":
+            doc_options['Options']\
+                       ['``--#opt-postload FILES``'],
+        "dbdir":
+            doc_options['Options']\
+                       ['``--dbdir DBDIR``'],
+        "dbrepomode":
+            doc_options['Options']\
+                       ['``--dbrepomode MODE``'],
+        "dbrepo":
+            doc_options['Options']\
+                       ['``--dbrepo REPOSITORY``'],
+        "scandb":
+            doc_options['Options']\
+                       ['``--scandb SCANDB``'],
+        "dumpdb":
+            doc_options['Options']\
+                       ['``--dumpdb``'],
+        "logmsg":
+            doc_options['Options']\
+                       ['``--logmsg LOGMESSAGE``'],
+        "getmodules":
+                doc_options['Options']\
+                           ['``--getmodules BUILDTAG``'],
+        "buildtag":
+                doc_options['Options']\
+                           ['``-t BUILDTAG, --buildtag BUILDTAG``'],
+        "buildtag_stem":
+                doc_options['Options']\
+                           ['``--buildtag-stem STEM``'],
+        "builddir":
+                doc_options['Options']\
+                           ['``--builddir BUILDDIR``'],
+        "localbuilddir":
+                doc_options['Options']\
+                           ['``--localbuilddir BUILDDIR``'],
+        "output":
+                doc_options['Options']\
+                           ['``-o OUTPUTFILE, --output OUTPUTFILE``'],
+        "extra":
+                doc_options['Options']\
+                           ['``-x EXTRALINE, --extra EXTRALLINE``'],
+        "alias":
+                doc_options['Options']\
+                           ['``-a ALIAS, --alias ALIAS``'],
+        "module":
+                doc_options['Options']\
+                           ['``-m MODULE, --module MODULE``'],
+        "exclude_states":
+                doc_options['Options']\
+                           ['``-X REGEXP, --exclude-states REGEXP``'],
+        "all-builds":
+                doc_options['Options']\
+                           ['``--all-builds``'],
+        "brief":
+                doc_options['Options']\
+                           ['``-b, --brief``'],
+        "lines":
+                doc_options['Options']\
+                           ['``--lines``'],
+        "recursive":
+                doc_options['Options']\
+                           ['``--recursive``'],
+        "detail":
+                doc_options['Options']\
+                           ['``--detail NO``'],
+        "dir_patch":
+                doc_options['Options']\
+                           ['``-D EXPRESSION, --dir-patch EXPRESSION``'],
+        "url_patch":
+                doc_options['Options']\
+                           ['``-U EXPRESSION, --url-patch EXPRESSION``'],
+        "noignorecase":
+                doc_options['Options']\
+                           ['``--noignorecase``'],
+        "no_checkout":
+                doc_options['Options']\
+                           ['``--no-checkout``'],
+        "no_make":
+                doc_options['Options']\
+                           ['``--no-make``'],
+        "no_err_build_exists":
+                doc_options['Options']\
+                           ['``-N, --no-err-build-exists``'],
+        "sort_build_dependencies_first":
+                doc_options['Options']\
+                           ['``--sort-build-dependencies-first``'],
+        "sort_build_dependencies_last":
+                doc_options['Options']\
+                           ['``--sort-build-dependencies-last``'],
+        "makeflags":
+                doc_options['Options']\
+                           ['``--makeflags MAKEFLAGS``'],
+        "readonly":
+                doc_options['Options']\
+                           ['``--readonly``'],
+        "nolock":
+                doc_options['Options']\
+                           ['``--nolock``'],
+        "jobs":
+                doc_options['Options']\
+                           ['``--jobs``'],
+        "progress":
+                doc_options['Options']\
+                           ['``-p, --progress``'],
+        "trace":
+                doc_options['Options']\
+                           ['``--trace``'],
+        "tracemore":
+                doc_options['Options']\
+                           ['``--tracemore``'],
+        "dump_modules":
+                doc_options['Options']\
+                           ['``--dump-modules``'],
+        "list":
+                doc_options['Options']\
+                           ['``--list``'],
+        "yes":
+                doc_options['Options']\
+                           ['``-y, --yes``'],
+        "editor":
+                doc_options['Options']\
+                           ['``--editor EDITOR``'],
+        "exceptions":
+                doc_options['Options']\
+                           ['``--exceptions``'],
+        "verbose":
+                doc_options['Options']\
+                           ['``-v, --verbose``'],
+        "version":
+                doc_options['Options']\
+                           ['``--version``'],
+        "dry_run":
+                doc_options['Options']\
+                           ['``-n, --dry-run``'],
+}
+
+def print_option_help(option_list=None):
+    """give help for a command line option.
+
+    If option is empty, show help for all options.
+    """
+    lines= []
+    if not option_list:
+        for n in sorted(option_help_topics.keys()):
+            lines.extend(option_help_topics[n].splitlines())
+    else:
+        for n in sorted(option_list):
+            lines.extend(option_help_topics[n].splitlines())
+    lines.append("")
+    lineno= len(lines)
+    txt= "\n".join(lines)
+    # pylint: disable=consider-using-in
+    if pager_mode=="on" or pager_mode=="always":
+        if lineno>24 or pager_mode=="always":
+            pydoc.pager(txt)
+            return
+    print(txt)
+
+
+me= script_shortname()
+usage_help = """usage: %s maincommand [subcommand] [options]
+
+Enter '%s help' for help on commands,
+      '%s help listoptions' or 'sumo -h all' for a list of all options
+      '%s -h option [option]' for help on the given options
+""" % tuple([me]*4)
+
+def maincmd_help(arguments, options):
+    """implement "help" command.
+    """
+    # pylint: disable=R0911
+    #                          Too many return statements
+    # pylint: disable=R0914
+    #                          Too many local variables
+    def main_topic_complete(topic_list, st, _):
+        """completion for sub-topics."""
+        return [k for k in topic_list if k.startswith(st)]
+    def sub_topic_complete(sub_topic_dict, st, result):
+        """completion for sub-topics."""
+        s= sub_topic_dict.get(result.MAINTOPIC)
+        if not s:
+            return []
+        return [k for k in s if k.startswith(st)]
+
+    main_topics_list= [k for k in help_topics if " " not in k]
+    sub_topics_list = [k for k in help_topics if " " in k]
+    sub_topics= {}
+
+    for s in sub_topics_list:
+        (main_topic, sub_topic) = s.split()
+        l= sub_topics.get(main_topic)
+        if l is None:
+            l= set()
+            sub_topics[main_topic]= l
+        l.add(sub_topic)
+
+    argspec= sumolib.cli.CmdSpecs()
+    argspec.add("MAINTOPIC", optional= True,
+                completion= lambda s,r: \
+                         main_topic_complete(main_topics_list, s, r))
+    argspec.add("SUBTOPIC", optional= True,
+                completion= lambda s,r: \
+                         sub_topic_complete(sub_topics, s, r))
+    args= sumolib.cli.process_args(arguments, argspec, options.list,
+                                   catch_exceptions)
+
+    # pylint: disable=no-member
+    if not args.defined("MAINTOPIC"):
+        helpkey= ""
+    elif not args.defined("SUBTOPIC"):
+        helpkey= args.MAINTOPIC
+    else:
+        helpkey= " ".join([args.MAINTOPIC, args.SUBTOPIC])
+
+    if helpkey=="listoptions":
+        # special handling of "listoptions" topic here:
+        print_option_help()
+        return
+
+    txt= help_topics.get(helpkey)
+    if txt is None:
+        print("no help found for '%s'" % helpkey)
+        return
+    # pylint: disable=consider-using-in
+    if pager_mode=="on" or pager_mode=="always":
+        lineno= len(txt.splitlines())
+        if lineno>24 or pager_mode=="always":
+            pydoc.pager(txt)
+    print(txt)
+
+# -----------------------------------------------
+# program's main command processing function
+# -----------------------------------------------
+
+def process(options, commands):
+    """do all the work.
+    """
+    # pylint: disable=global-statement, too-many-branches
+    global catch_exceptions, processes
+    if options.exceptions:
+        catch_exceptions= False
+    if options.jobs:
+        try:
+            processes= int(options.jobs)
+            if processes<0:
+                raise ValueError
+        except ValueError as e:
+            raise ValueError("error, value for '--jobs' must be "
+                             "an integer greater or equal to 0") from e
+        if processes==0:
+            processes= None # see docs for multiprocessing.Pool()
+
+    try:
+        (cmd, c_args)= sumolib.cli.process_cmd(commands, KNOWN_MAIN_COMMANDS,
+                                               options.list)
+
+        if cmd=="help":
+            maincmd_help(c_args, options)
+            return
+
+        if cmd=="config":
+            maincmd_config(c_args, options)
+            return
+
+        # load config files and merge with options (options object is changed):
+        # may raise IOError, TypeError, ValueError:
+        (options, _)= load_config_files(options, None)
+        # ^^ disable_loading==None means: use options.disable_loading
+
+        if options.readonly:
+            # We set dbrepomode to 'get' in this case. This avoids error
+            # messages when dbrepomode is 'pull' or 'push' but the dependency
+            # database is not writable. When --readonly was given in the
+            # configuration, we assume that it is okay when the dependency
+            # database is not writable, we get no warning messages when
+            # dbrepomode is 'get'.
+            if options.dbrepo:
+                options.dbrepomode= 'get'
+
+        # Set callbacks for completion module here, they are needed for some
+        # command completion functions:
+        if options.list:
+            # the following callback may raise ValueError, IOError,
+            # sumolib.JSON.ParseError:
+            sumolib.complete.db_cache_callback= \
+                    lambda : db_to_module_cache(options)
+            # the following callback may raise IOError, ValueError:
+            sumolib.complete.build_cache_callback= \
+                    lambda : builddb_to_module_cache(options)
+        else:
+            # clear possible cache files created by completion:
+            sumolib.complete.clear_caches()
+
+        # pylint: disable=no-else-return
+        if cmd=="lock":
+            # may raise sumolib.lock.LockedError, sumolib.lock.AccessError:
+            maincmd_lock(c_args, options)
+            return
+        elif cmd=="unlock":
+            maincmd_unlock(c_args, options)
+            return
+        elif cmd=="db":
+            maincmd_db(c_args, options)
+        elif cmd=="build":
+            maincmd_build(c_args, options)
+        else:
+            raise AssertionError("unexpected command: %s" % cmd)
+        return
+    except (AssertionError, IOError, KeyError, TypeError, ValueError,
+            EOFError, re.error,
+            sumolib.JSON.ParseError, sumolib.JSON.ParseError,
+            sumolib.lock.AccessError, sumolib.lock.LockedError) as e:
+        if not catch_exceptions:
+            raise
+        # does sys.exit() :
+        sumolib.utils.exception_exit(e)
+
+# -----------------------------------------------
+# program's main function
+# -----------------------------------------------
+
+def main():
+    """The main function.
+
+    parse the command-line options and perform the command
+    """
+    # pylint: disable=too-many-statements
+    # command-line options and command-line help:
+
+    specs= sumolib.cli.OptionSpecs()
+    specs.completion_options("list", "--list", "--listnew")
+    specs.add("--help -h")
+    specs.add("--summary")
+    specs.add("--test")
+    specs.add("--config -c",
+              sumolib.cli.complete_file,
+              "CONFIGFILE",
+              array= True)
+    specs.add("--no-default-config -C")
+    specs.add("--disable-loading")
+    specs.add("--append -A",
+              lambda s,o: \
+                  sumolib.cli.complete_list(KNOWN_CONFIG_LIST_OPTIONS, s, o),
+              arg_name= "optionname", array= True)
+    specs.add("--#preload", sumolib.cli.complete_file, "FILES", array= True)
+    specs.add("--#opt-preload", sumolib.cli.complete_file, "FILES",
+              array= True)
+    specs.add("--#postload", sumolib.cli.complete_file, "FILES", array= True)
+    specs.add("--#opt-postload", sumolib.cli.complete_file, "FILES",
+              array= True)
+    specs.add("--dbdir", sumolib.cli.complete_dir, arg_name= "DBDIR")
+    specs.add("--dbrepomode", arg_name= "MODE",
+              value_list= KNOWN_REPO_MODES)
+    specs.add("--dbrepo", arg_name= "REPOSITORY")
+    specs.add("--scandb", sumolib.cli.complete_file, "SCANDB")
+    specs.add("--dumpdb")
+    specs.add("--logmsg", arg_name= "BUILDTAG")
+    specs.add("--editor", arg_name= "EDITOR")
+    specs.add("--buildtag -t", arg_name= "BUILDTAG")
+    specs.add("--buildtag-stem", arg_name= "STEM")
+    specs.add("--builddir", sumolib.cli.complete_dir, arg_name= "BUILDDIR")
+    specs.add("--localbuilddir", sumolib.cli.complete_dir,
+              arg_name= "BUILDDIR")
+    specs.add("--output -o", arg_name= "OUTPUTFILE")
+    specs.add("--extra -x", arg_name= "EXTRALINE", array= True)
+    specs.add("--alias -a", arg_name= "ALIAS", array= True)
+    specs.add("--module -m", arg_name= "MODULESPEC", array= True)
+    specs.add("--getmodules", arg_name= "BUILDTAG")
+    specs.add("--exclude-states -X", arg_name= "REGEXP", array= True)
+    specs.add("--all-builds")
+    specs.add("--brief -b")
+    specs.add("--lines")
+    specs.add("--recursive")
+    specs.add("--detail", arg_name= "DETAIL", value_list=["0","1","2","3"])
+    specs.add("--dir-patch -D", arg_name= "PATCHEXPRESSION", array= True)
+    specs.add("--url-patch -U", arg_name= "PATCHEXPRESSION", array= True)
+    specs.add("--noignorecase")
+    specs.add("--no-checkout")
+    specs.add("--no-make")
+    # with arg_is_option we allow the option argument to start with a "-":
+    specs.add("--makeflags", arg_name= "MAKEFLAGS", array= True,
+              arg_is_option= True)
+    specs.add("--no-err-build-exists -N")
+    specs.add("--sort-build-dependencies-first")
+    specs.add("--sort-build-dependencies-last")
+    specs.add("--readonly")
+    specs.add("--nolock")
+    specs.add("--jobs", arg_name= "JOBS")
+    specs.add("--progress -p")
+    specs.add("--trace")
+    specs.add("--tracemore")
+    specs.add("--dump-modules")
+    specs.add("--list")
+    specs.add("--yes -y")
+    specs.add("--exceptions")
+    specs.add("--verbose -v")
+    specs.add("--version")
+    specs.add("--dry-run -n")
+
+    #x= sys.argv
+    #tracemsg("%s\n" % repr(x))
+
+    if len(sys.argv)<=1:
+        print(usage_help)
+        sys.exit(0)
+
+    if len(sys.argv)<=2:
+        if sys.argv[1]=="-h" or sys.argv[1]=="--help":
+            print(usage_help)
+            sys.exit(0)
+
+    (options, args)= sumolib.cli.process_opts(sys.argv, specs,
+                                              catch_exceptions)
+
+    # pylint: disable=E1103
+    #                          Instance of 'Options' has no .. member
+
+    #sys.stderr.write("options object: %s" % options)
+
+    if options.help:
+        if not options.list:
+            l= [x for x in options.defined_items() if x!="help"]
+            print_option_help(l)
+        sys.exit(0)
+    if options.summary:
+        if not options.list:
+            print_summary()
+        sys.exit(0)
+    if options.version:
+        print("%s %s" % (me, __version__))
+        sys.exit(0)
+    if options.test:
+        if not options.list:
+            _test()
+        sys.exit(0)
+
+    # pylint: enable=E1103
+    #                          Instance of 'Options' has no .. member
+
+    # options: the options-object
+    # args: list of left-over args
+
+    # join some of the list options:
+    options.alias      = sumolib.utils.opt_join(options.alias, do_sort= True)
+    options.module     = sumolib.utils.opt_join(options.module)
+    options.makeflags   = sumolib.utils.opt_join(options.makeflags)
+
+    # A set of all options where lists from the command line are *appended*
+    # to lists from the config file. The default is that lists from the command
+    # line overwrite settings from the config file.
+    if not options.append:
+        options.append= set()
+    else:
+        options.append= sumolib.utils.opt_join(options.append)
+        options.append= set(options.append)
+
+    # we could pass "args" as an additional parameter to process here if it
+    # would be needed to process remaining command line arguments.
+    process(options, args)
+    sys.exit(0)
+
+if __name__ == "__main__":
+    main()

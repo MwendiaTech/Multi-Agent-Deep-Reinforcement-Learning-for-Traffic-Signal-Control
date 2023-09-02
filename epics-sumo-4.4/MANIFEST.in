@@ -1,0 +1,30 @@
+#include *.py
+include bin/*
+recursive-include sumolib/data *
+include sumolib/*.py
+include doc/*.rst
+include doc/*.dia
+include doc/*.png
+include doc/*.sh
+include LICENSE
+include README
+#include test/Makefile
+#include test/README
+#include test/*.SDCyml
+#include test/*.SDSpy
+#include test/*.SDTpy
+#include test/*.SDCpy
+#include test/*.sh
+#include test/*.ok
+#include doc/*.rst
+#include doc/*.gif
+#include doc/*.py
+#recursive-include doc/_static *
+#recursive-include doc/_templates *
+#recursive-include doc/_build *
+#include doc/Makefile
+#include doc/make.bat
+#include samples/*.SDCyml
+#include administration_tools/*.sh
+#include administration_tools/README*
+

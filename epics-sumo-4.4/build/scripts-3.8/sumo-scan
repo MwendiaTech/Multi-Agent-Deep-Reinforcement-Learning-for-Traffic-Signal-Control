@@ -1,0 +1,945 @@
+#!/media/archie/archie/Ron Works/Deep Learning/.venv8/bin/python
+# -*- coding: UTF-8 -*-
+
+# pylint: disable= invalid-name
+
+"""
+============
+sumo-scan.py
+============
+
+This script scans an existing EPICS support module directory tree and collects
+all information necessary to generate a dependency database or *DB* file.
+
+For details see: `<http://www-csr.bessy.de/control/sumo/>`_
+
+"""
+
+from optparse import OptionParser # pylint: disable= deprecated-module
+import sys
+import os.path
+import os
+import re
+# import pprint
+
+import sumolib.system
+import sumolib.Config
+import sumolib.utils
+
+import sumolib.makefile_scan
+import sumolib.repos
+
+makefile_scan_pre= {}
+
+# version of the program:
+__version__= "4.4" #VERSION#
+
+if sys.version_info[0:2] < (3,2):
+    sys.exit("error: python 3.2 or newer is required for this application")
+# Note: The Python version is checked in:
+#     setup.py, sumo, sumo-scan
+
+assert __version__==sumolib.system.__version__
+assert __version__==sumolib.Config.__version__
+assert __version__==sumolib.utils.__version__
+assert __version__==sumolib.makefile_scan.__version__
+assert __version__==sumolib.repos.__version__
+
+KNOWN_COMMANDS=set(("deps", "name2paths", "path2names",
+                    "groups", "repos", "all", "config"))
+
+KNOWN_CONFIG_COMMANDS=set(("list", "show", "make"))
+
+IGNORE_NAMES= set(["TOP", "EPICS_SUPPORT",
+                   "SUPPORT", "MSI", "TEMPLATE_TOP"])
+
+CONFIG_NAME="sumo-scan.config"
+ENV_CONFIG="SUMOSCANCONFIG"
+
+KNOWN_CONFIG_BOOL_OPTIONS= { "missing-repo",
+                             "missing-tag",
+                             "progress",
+                             "verbose"
+                           }
+
+KNOWN_CONFIG_STR_OPTIONS=  { "exclude-deps",
+                           }
+KNOWN_CONFIG_LIST_OPTIONS= { "#preload",
+                             "#opt-preload",
+                             "#postload",
+                             "#opt-postload",
+                             "dir",
+                             "exclude-path",
+                             "group-basedir",
+                             "hint",
+                             "ignore-changes",
+                             "ignore-name",
+                             "dir-patch",
+                             "url-patch",
+                           }
+
+catch_exceptions= True
+
+# -----------------------------------------------
+# RELEASE file scanning
+# -----------------------------------------------
+
+def scan_release_file(filename,
+                      ignore_names,
+                      external_definitions= None,
+                      verbose= False, dry_run= False):
+    """scan a release file.
+
+    may raise:
+    IOError
+    """
+    # may raise IOError:
+    data= sumolib.makefile_scan.scan(filename,
+                                     external_definitions,
+                                     makefile_scan_pre,
+                                     True, # warnings
+                                     verbose, dry_run)
+    dependencies= {}
+    for (k,v) in data.items():
+        if not os.path.exists(v):
+            continue
+        #if not "support" in v:
+        #    continue
+        #if v.endswith("support"):
+        #    continue
+        if k in ignore_names: # names to ignore
+            continue
+        v= os.path.realpath(v)
+        #v= v.replace("//","/") # replace double-slashes
+        dependencies[k]= v
+    return dependencies
+
+def scan_support_deps(support_path,
+                      ignore_names,
+                      verbose= False, dry_run= False):
+    """scan the RELEASE file of a support.
+
+    may raise:
+    IOError - In case "make" fails, for example when file RELEASE contains
+              errors
+    """
+    external_definitions= { "TOP": support_path }
+    # may raise IOError:
+    return scan_release_file(os.path.join(support_path,"configure","RELEASE"),
+                             ignore_names,
+                             external_definitions,
+                             verbose= verbose, dry_run= dry_run)
+
+
+def support_configure_data(support_trees,
+                           buildtag,
+                           ignore_names,
+                           exclude_matcher,
+                           trace,
+                           progress= False,
+                           verbose= False, dry_run= False):
+    """scan EPICS configuration files a whole file-tree of EPICS supports.
+    """
+    # pylint: disable=R0915
+    #                          Too many statements
+    # pylint: disable=R0912
+    #                          Too many branches
+    # pylint: disable=R0914
+    #                          Too many local variables
+    # pylint: disable=R0913
+    #                          Too many arguments
+    def slicer(l, values):
+        """changes a list to a list with certain elements.
+
+        This function *directly* modifies the list instead of creating a new
+        one. This is needed for the os.walk function.
+        """
+        new= []
+        for v in values:
+            if v in l:
+                new.append(v)
+        l[:]= new
+    def purge(l):
+        """empties a list by *directly* changing it."""
+        l[:]= []
+    def slice_buildtag(l, buildtag):
+        """narrow the search to a given buildtag."""
+        index=0
+        i= None
+        for e in l:
+            if sumolib.utils.split_treetag(e)[1]==buildtag:
+                i= index
+                break
+            index+=1
+        if i is None:
+            return
+        l[i+1:]= []
+        l[0:i]= []
+    def module_dir_reached(dirnames):
+        """return True when we are within a module directory."""
+        if "configure" in dirnames:
+            return True
+        if "db" in dirnames:
+            return True
+        return False
+
+    release_dict= {}
+    cnt_max= 50
+    cnt= 0
+    if progress:
+        sumolib.utils.show_progress(cnt, cnt_max,
+                                    "directories searched for RELEASE")
+    # not possible on python 2.5:
+    #for (dirpath, dirnames, filenames) in os.walk(support_tree,
+    #                                              topdown= True):
+    modpath= None
+    # progress indicatiors would interfere with trace messages:
+    if trace:
+        progress= False
+    # pylint: disable= too-many-nested-blocks
+    for support_tree in support_trees:
+        for (dirpath, dirnames, filenames) in \
+                                 sumolib.utils.dirwalk(support_tree):
+            if trace:
+                # pylint: disable= consider-using-f-string
+                sys.stderr.write("%s\n" % dirpath)
+            if progress:
+                cnt= sumolib.utils.show_progress(cnt, cnt_max)
+            if exclude_matcher.search(dirpath):
+                if trace:
+                    sys.stderr.write("\texclude!\n")
+                purge(dirnames)
+                continue
+            if buildtag is not None:
+                slice_buildtag(dirnames, buildtag)
+            if module_dir_reached(dirnames):
+                if trace:
+                    sys.stderr.write("\tmodule found\n")
+                modpath= dirpath
+                # only descend into "configure", "lib" and "bin":
+                slicer(dirnames, ["configure","lib","bin"])
+                versioned_path= os.path.realpath(dirpath)
+                release_dict[versioned_path]= {}
+                continue
+            if modpath is None:
+                continue
+            if dirpath.startswith(modpath):
+                # get the path of the versioned support:
+                versioned_path= os.path.realpath(os.path.dirname(dirpath))
+                last= os.path.basename(dirpath)
+                if last=="configure":
+                    if "RELEASE" in filenames:
+                        # pylint: disable= consider-using-f-string
+                        try:
+                            # scan_support_deps may fail when the RELEASE
+                            # file is faulty. In such a case we do not want
+                            # to stop sumo-scan but continue with a warning.
+                            data= scan_support_deps(versioned_path,
+                                                    ignore_names,
+                                                    verbose= verbose,
+                                                    dry_run= dry_run)
+                            release_dict[versioned_path]= data
+                        except IOError:
+                            # since the make command in scan_support_deps()
+                            # already printed the error message to stderr
+                            # we do not have to print the exception text
+                            # here:
+                            sys.stderr.write("Warning: scanning of file '%s' "
+                                             "failed\n" % dirpath)
+                    purge(dirnames)
+                    continue
+    if progress:
+        sys.stderr.write("\n")
+    #if trace:
+    #    sys.stderr.write("release_dict:\n")
+    #    sys.stderr.write(pprint.pformat(release_dict))
+    return release_dict
+
+def name2path_from_deps(deps):
+    """calculate name2path dict from dependency dict.
+    """
+    name2path= {}
+    for dependends in deps.values():
+        for name, dep_path in dependends.items():
+            sumolib.utils.dict_of_sets_add(name2path, name, dep_path)
+    return sumolib.utils.dict_sets_to_lists(name2path)
+
+def path2name_from_deps(deps):
+    """calculate path2name dict from dependency dict.
+    """
+    path2name= {}
+    for dependends in deps.values():
+        for name, dep_path in dependends.items():
+            sumolib.utils.dict_of_sets_add(path2name, dep_path, name)
+    return sumolib.utils.dict_sets_to_lists(path2name)
+
+def groups_from_deps(deps, basedirs):
+    """try to group directories.
+    """
+    # pylint: disable= too-many-locals
+    def _add(dict_, p):
+        """add a path."""
+        # here the modulename is separated from the versionname:
+        (head,tail)= os.path.split(p)
+        dict_.setdefault(head, set()).add(tail)
+    def gen_name(name, basedirs):
+        """generate a module name."""
+        # print "genname(%s,%s)" % (repr(name),repr(basedirs))
+        for basedir in basedirs:
+            if name.startswith(basedir):
+                if name!=basedir:
+                    name= name.replace(basedir,"")
+                    break
+        if name[0]=="/":
+            name= name[1:]
+        name= name.replace("/","_")
+        # print "return: %s" % repr(name.upper())
+        return name.upper()
+    # print "groups_from_deps STARTED"
+    groups= {}
+    for path, dependencies in deps.items():
+        _add(groups, path)
+        for deppath in dependencies.values():
+            _add(groups, deppath)
+    new= {}
+    my_basedirs= [os.path.realpath(d) for d in basedirs]
+    my_basedirs.extend([os.path.split(d)[0] for d in my_basedirs])
+    # print "BD: %s" % repr(my_basedirs)
+    for k, v in groups.items():
+        groupname= gen_name(k,my_basedirs)
+        groupdict= new.setdefault(groupname, {})
+        pathlist = groupdict.setdefault(k, [])
+        pathlist.extend(v)
+        pathlist.sort()
+    # print "ABORTED"
+    # sys.exit("exit-ABORTED")
+    return new
+
+
+def filter_exclude_deps(deps, regexp, trace):
+    """remove all paths whose dependencies match regexp.
+    """
+    rx= re.compile(regexp)
+    new= {}
+    for path, dependency_dict in deps.items():
+        matched= False
+        for _, dep in dependency_dict.items():
+            if rx.search(dep):
+                matched= True
+                break
+        if not matched:
+            new[path]= dependency_dict
+        else:
+            if trace:
+                # pylint: disable= consider-using-f-string
+                sys.stderr.write("filter_exclude_deps removes: %s\n" % path)
+    return new
+
+# -----------------------------------------------
+# repository scanning
+# -----------------------------------------------
+
+def all_paths_from_deps(deps):
+    """get a collection of all paths from the dependency dict.
+    """
+    all_paths= set()
+    for path, dependends in deps.items():
+        all_paths.add(path)
+        for dep_path in dependends.values():
+            all_paths.add(dep_path)
+    return all_paths
+
+def repo_info(deps, progress,
+              dir_patches,
+              url_patches,
+              ignore_changes_matcher,
+              hints,
+              verbose, dry_run):
+    # pylint: disable=R0913
+    #                          Too many arguments
+    # pylint: disable=R0914
+    #                          Too many local variables
+    # pylint: disable=R0912
+    #                          Too many branches
+    """return a dict mapping paths to repository informations.
+    """
+    repo_hints= {}
+    if ignore_changes_matcher:
+        repo_hints["ignore changes"]= \
+                sumolib.utils.RegexpMatcher(ignore_changes_matcher)
+    if dir_patches:
+        patcher= sumolib.utils.RegexpPatcher()
+        for p in dir_patches:
+            # pylint: disable=W0123
+            #                          Use of eval
+            patcher.add(eval(p))
+        repo_hints["dir patcher"]= patcher
+    if url_patches:
+        patcher= sumolib.utils.RegexpPatcher()
+        for p in url_patches:
+            # pylint: disable=W0123
+            #                          Use of eval
+            patcher.add(eval(p))
+        repo_hints["url patcher"]= patcher
+    repo_hints_path= dict(repo_hints)
+    repo_hints_path["force path"]= True
+    repo_hints_local= dict(repo_hints)
+    repo_hints_local["force local"]= True
+    path_set= all_paths_from_deps(deps)
+    new= {}
+    cnt_max= 50
+    cnt= 0
+    if progress:
+        sumolib.utils.show_progress(cnt, cnt_max,
+                                    "paths searched for repositories")
+    for path in path_set:
+        if progress:
+            cnt= sumolib.utils.show_progress(cnt, cnt_max)
+        flagdict= hints.flags(path)
+
+        if flagdict.get("path"):
+            repo_obj= sumolib.repos.src_from_dir(path, repo_hints_path,
+                                                 verbose, dry_run)
+        else:
+            if flagdict.get("tagless"):
+                hints_param= repo_hints_local
+            else:
+                hints_param= repo_hints
+
+            repo_obj= sumolib.repos.repo_from_dir(path, hints_param,
+                                                  verbose, dry_run)
+            if (not repo_obj) or repo_obj.local_changes:
+                # no valid repository found  - or -
+                # local changes
+                repo_obj= sumolib.repos.src_from_dir(path, hints_param,
+                                                     verbose, dry_run)
+
+        new[path]= repo_obj.source_spec()
+
+    if progress:
+        sys.stderr.write("\n")
+    return new
+
+# -----------------------------------------------
+# main
+# -----------------------------------------------
+
+def script_shortname():
+    """return the name of this script without a path component."""
+    return os.path.basename(sys.argv[0])
+
+def get_configuration(options):
+    """get the support configuration data.
+    """
+    if not options.dir:
+        sys.exit("--dir is mandatory")
+    for d in options.dir:
+        if not os.path.exists(d):
+            # pylint: disable= consider-using-f-string
+            sys.exit("error, directory \"%s\" doesn't exist" % d)
+    exclude_matcher= sumolib.utils.RegexpMatcher(options.exclude_path)
+    if options.ignore_name:
+        ignore_names= set(options.ignore_name)
+    else:
+        ignore_names= set()
+    deps= support_configure_data(options.dir,
+                                 options.buildtag,
+                                 ignore_names,
+                                 exclude_matcher,
+                                 options.trace,
+                                 options.progress,
+                                 options.verbose,
+                                 options.dry_run)
+    return deps
+
+def process_config(config, commands, options):
+    """do all the work.
+    """
+    if not commands:
+        sys.exit("command missing")
+    if commands[0] not in KNOWN_CONFIG_COMMANDS:
+        # pylint: disable= consider-using-f-string
+        sys.exit("unknown command: %s" % commands[0])
+
+    if commands[0]=="list":
+        print("These configuration files were loaded:\n")
+        print("\n".join(config.real_paths()))
+        return
+
+    if commands[0]=="make" or commands[0]=="show":
+        if commands[0]=="make":
+            if len(commands)<=1:
+                sys.exit("filename for command \"makeconfig\" is missing")
+            filename= commands[1]
+            optionnames= commands[2:]
+        else:
+            filename= "-"
+            optionnames= commands[1:]
+        config.save(filename, optionnames, options.verbose, options.dry_run)
+        return
+
+def process(options, commands):
+    """do all the work.
+
+    """
+    # pylint: disable= global-statement
+    # pylint: disable= too-many-branches
+    # pylint: disable= too-many-statements
+    global catch_exceptions
+    if options.exceptions:
+        catch_exceptions= False
+
+    options.dir            = sumolib.utils.opt_join(options.dir)
+    options.exclude_path   = sumolib.utils.opt_join(options.exclude_path)
+    options.group_basedir  = sumolib.utils.opt_join(options.group_basedir)
+    options.ignore_changes = sumolib.utils.opt_join(options.ignore_changes)
+    options.ignore_name    = sumolib.utils.opt_join(options.ignore_name)
+
+    config_name= None
+    if not options.no_default_config:
+        config_name= CONFIG_NAME
+    config= sumolib.Config.ConfigFile(\
+                config_name,\
+                ENV_CONFIG,\
+                KNOWN_CONFIG_BOOL_OPTIONS,
+                KNOWN_CONFIG_STR_OPTIONS,
+                KNOWN_CONFIG_LIST_OPTIONS, None)
+
+    try:
+        # may raise IOError, KeyError, TypeError:
+        config.load(options.config, not options.disable_loading)
+    except (TypeError, KeyError, IOError) as e:
+        if not catch_exceptions:
+            raise
+        # pylint: disable= consider-using-f-string
+        sys.exit("Error while loading config file(s): %s" % str(e))
+    try:
+        # may raise KeyError, TypeError:
+        config.merge_options(options, options.append)
+    except (TypeError, KeyError) as e:
+        if not catch_exceptions:
+            raise
+        sys.exit(str(e))
+
+    if not commands:
+        commands= ["all"]
+
+    # If the first command is 'config', executed it straight away
+    # and don't check the rest. It has subcommands that are not
+    # recognized at the global level
+    if commands[0]=="config":
+        process_config(config, commands[1:], options)
+        return
+
+    for c in commands:
+        if not c in KNOWN_COMMANDS:
+            # pylint: disable= consider-using-f-string
+            sys.exit("unknown command: %s" % c)
+
+    # evaluate the --hint command line option:
+    hints= sumolib.utils.Hints(options.hint)
+
+    commands= set(commands)
+    if "all" in commands:
+        commands.add("deps")
+        commands.add("repos")
+        commands.add("groups")
+
+    deps= None
+
+    if not options.ignore_name:
+        options.ignore_name= IGNORE_NAMES
+    if not options.append:
+        options.append= set()
+    else:
+        options.append= sumolib.utils.opt_join(options.append)
+        options.append= set(options.append)
+
+    if options.dir:
+        deps= get_configuration(options)
+    elif options.info_file:
+        # pylint: disable=W0633
+        #                     Attempting to unpack a non-sequence
+        deps= sumolib.JSON.loadfile(options.info_file)
+    else:
+        sys.exit("error: -d or -i required for command")
+
+    if options.exclude_deps:
+        deps= filter_exclude_deps(deps, options.exclude_deps, options.trace)
+
+    bag= {}
+
+    if "deps" in commands:
+        bag["dependencies"]= deps
+    if "name2paths" in commands:
+        bag["name2paths"]= name2path_from_deps(deps)
+    if "path2names" in commands:
+        bag["path2names"]= path2name_from_deps(deps)
+    if "groups" in commands:
+        if options.group_basedir:
+            basedirs= options.group_basedir + options.dir
+        else:
+            basedirs= options.dir
+        bag["groups"]= groups_from_deps(deps, basedirs)
+    if "repos" in commands:
+        repo_data= repo_info(deps,
+                             options.progress,
+                             options.dir_patch,
+                             options.url_patch,
+                             options.ignore_changes,
+                             hints,
+                             options.verbose, options.dry_run)
+        bag["repos"]= repo_data
+        if options.missing_repo:
+            new= {}
+            for (p, s) in repo_data.items():
+                sspec= sumolib.repos.SourceSpec(s)
+                if sspec.sourcetype()=="path":
+                    continue
+                new[p]= s
+            bag["missing-repo"]= new
+        if options.missing_tag:
+            new= {}
+            for (p, s) in repo_data.items():
+                sspec= sumolib.repos.SourceSpec(s)
+                if sspec.sourcetype()=="path":
+                    continue
+                if sspec.tag is None:
+                    new[p]= s
+            bag["missing-tag"]= new
+    sumolib.JSON.dump(bag)
+
+# pylint: enable=R0912
+
+def print_summary():
+    """print a short summary of the scripts function."""
+    # pylint: disable= consider-using-f-string
+    print("%-20s: a tool for scanning EPICS support trees \n" % \
+          script_shortname())
+
+def _test():
+    """does a self-test of some functions defined here."""
+    print("performing self test...")
+    # pylint: disable= import-outside-toplevel
+    import doctest
+    doctest.testmod()
+    print("done!")
+
+usage = """usage: %prog [options] command
+where command is:
+  deps  : scan RELEASE files
+  repos : scan for repositories
+  groups: group directories by name
+  all   : do commands "deps", "repos" and "groups"
+  name2paths: return a map mapping names to paths
+  path2names: return a map mapping paths to names
+
+If command is missing, assume "all" as command.
+
+The commands above can be combined!
+
+  config list
+          List all configuration files that were loaded.
+
+  config show [OPTIONNAMES]
+          Show the configuration in JSON format.  OPTIONNAMES is an optional
+          list of long option names. If OPTIONNAMES are specified, only options
+          from this list are saved in the configuration file.
+
+  config make FILENAME [OPTIONNAMES]
+          Create a new configuration file from the options read from
+          configuration files and options from the command line. If FILENAME is
+          '-' dump to the console.  OPTIONNAMES is an optional list of long
+          option names. If OPTIONNAMES are specified, only options from this
+          list are saved in the configuration file.
+"""
+
+def main():
+    """The main function.
+
+    parse the command-line options and perform the command
+    """
+    # command-line options and command-line help:
+    # pylint: disable= consider-using-f-string
+    parser = OptionParser(usage=usage,
+                          version="%%prog %s" % __version__,
+                          description="This program scans EPICS support "+\
+                              "trees and prints the found dependencies "+\
+                              "to the screen",
+                         )
+
+    parser.add_option("--summary",
+                      action="store_true",
+                      help="Print a summary of the function of the program.",
+                     )
+    parser.add_option("--test",
+                      action="store_true",
+                      help="Perform simple self-test.",
+                     )
+    parser.add_option("-c", "--config",
+                      action="append",
+                      type="string",
+                      help="Load options from the given configuration "
+                           "file. You can specify more than one of "
+                           "these.  Unless --no-default-config is given, "
+                           "the program always loads configuration files "
+                           "from several standard directories first "
+                           "before it loads your configuration file. The "
+                           "contents of all configuration files are "
+                           "merged. ",
+                      metavar="CONFIGFILE"
+                     )
+    parser.add_option("-C", "--no-default-config",
+                      action="store_true",
+                      help="If this option is given the program doesn't load "
+                           "the default configuration.",
+                     )
+    parser.add_option("--disable-loading",
+                      action="store_true",
+                      help="If given, disable execution of load commands "
+                           "like '#preload' in configuration files. In "
+                           "this case these keys are treated like ordinary "
+                           "keys."
+                     )
+    parser.add_option("-A", "--append",
+                      action="append",
+                      type="string",
+                      help="If an option with name OPTIONNAME is given "
+                           "here and it is a list option, the list from "
+                           "the command line is *appended* to the list "
+                           "from the configuration file. The default is "
+                           "that options from the command line *override* "
+                           "option values from the configuration file.",
+                      metavar="OPTIONNAME"
+                     )
+    parser.add_option("--#preload",
+                      action="append",
+                      type="string",
+                      help="Specify a an '#preload' directive in the "
+                           "configuration file. This option has only a "
+                           "meaning if a configuration file is created with "
+                           "the 'makeconfig' command. '#preload' means that "
+                           "the following file(s) are loaded before the "
+                           "rest of the configuration file. ",
+                      metavar="FILES"
+                     )
+    parser.add_option("--#opt-preload",
+                      action="append",
+                      type="string",
+                      help="This option does the same as --#preload but "
+                           "the file loading is optional. If they do not "
+                           "exist the program continues without an error. ",
+                      metavar="FILES"
+                     )
+    parser.add_option("--#postload",
+                      action="append",
+                      type="string",
+                      help="Specify a an '#postload' directive in the "
+                           "configuration file. This option has only a "
+                           "meaning if a configuration file is created with "
+                           "the 'makeconfig' command. '#postload' means that "
+                           "the following file(s) are loaded after the "
+                           "rest of the configuration file. ",
+                      metavar="FILES"
+                     )
+    parser.add_option("--#opt-postload",
+                      action="append",
+                      type="string",
+                      help="This option does the same as --#postload but "
+                           "the file loading is optional. If they do not "
+                           "exist the program continues without an error. ",
+                      metavar="FILES"
+                     )
+    parser.add_option("-d", "--dir",
+                      action="append",
+                      type="string",
+                      help="Parse all RELEASE files in directory DIR."
+                           "You can specify more than one of these by "
+                           "repeating this option or by joining values in "
+                           "a single string separated by spaces. "
+                           "A default for this option can be put in a "
+                           "configuration file.",
+                      metavar="DIR"
+                     )
+    parser.add_option("-i","--info-file",
+                      action="store",
+                      type="string",
+                      help="Read information from INFOFILE. This is a "
+                           "scan file generated by this script in a prevous "
+                           "run.",
+                      metavar="INFOFILE"
+                     )
+    parser.add_option("-N", "--ignore-name",
+                      action="append",
+                      help= "Define names of variables in RELEASE files that "
+                            "should be ignored. You usually want to ignore "
+                            "the names like 'TOP' or 'SUPPORT'. You can "
+                            "specify more than one of these by repeating "
+                            "this option or by joining values in a single "
+                            "string separated by spaces. A default for this "
+                            "option can be put in a configuration file. If "
+                            "this option isn't provided, the program uses "
+                            "these defaults: " + (" ".join(IGNORE_NAMES)),
+                      metavar="NAME"
+                     )
+    parser.add_option("-g", "--group-basedir",
+                      action="append",
+                      help="Option \"-g\" or \"--group-basedir\" must be "
+                           "followed by a directory name. It defines the "
+                           "part of the directory path that is the same "
+                           "for all support modules. This is needed in "
+                           "order to generate a module name from the "
+                           "module's directory path. "
+                           "You can specify more than one of these by "
+                           "repeating this option or by joining values in "
+                           "a single string separated by spaces. "
+                           "A default for this option can be put in a "
+                           "configuration file. Directories (option --dir) "
+                           "are always appended to the list of "
+                           "group-basedirs.",
+                      metavar="DIR"
+                     )
+    parser.add_option("--exclude-path",
+                      action="append",
+                      type="string",
+                      help="Exclude all paths that match REGEXP from "
+                           "dependencies. "
+                           "You can specify more than one of these by "
+                           "repeating this option or by joining values in "
+                           "a single string separated by spaces. "
+                           "A default for this option can be put in a "
+                           "configuration file.",
+                      metavar="REGEXP"
+                     )
+    parser.add_option("--exclude-deps",
+                      action="store",
+                      type="string",
+                      help="Exclude all paths whose dependencies "
+                           "match REGEXP. "
+                           "A default for this option can be put in a "
+                           "configuration file.",
+                      metavar="REGEXP"
+                     )
+    parser.add_option("--ignore-changes",
+                      action="append",
+                      type="string",
+                      help="Ignore all uncomitted changes in files that "
+                           "match the REGEXP. Usually uncomitted changes "
+                           "mean that we cannot use the repository as such "
+                           "but must copy the whole directory (source type "
+                           "is always 'path'). A common application for "
+                           "this option is to ignore changes in "
+                           "'configure/RELEASE'. "
+                           "You can specify more than one of these by "
+                           "repeating this option or by joining values in "
+                           "a single string separated by spaces. "
+                           "A default for this option can be put in a "
+                           "configuration file.",
+                      metavar="REGEXP"
+                     )
+    parser.add_option("-D", "--dir-patch",
+                      action="append",
+                      help="Specify a directory PATCHEXPRESSION. Such an "
+                           "expression consists of a tuple of 2 python "
+                           "strings. The first is the match expression, "
+                           "the second one is the replacement string. The "
+                           "regular expression is applied to every source "
+                           "path generated. You can specify more than one "
+                           "PATCHEXPRESSION. "
+                           "A default for this option can be put in a "
+                           "configuration file.",
+                      metavar="PATCHEXPRESSION"
+                     )
+    parser.add_option("-U", "--url-patch",
+                      action="append",
+                      help="Specify a repository url PATCHEXPRESSION. Such "
+                           "an expression consists of a tuple of 2 python "
+                           "strings. The first is the match expression, "
+                           "the second one is the replacement string. The "
+                           "regular expression is applied to every source "
+                           "url generated. You can specify more than one "
+                           "PATCHEXPRESSION. "
+                           "A default for this option can be put in a "
+                           "configuration file.",
+                      metavar="PATCHEXPRESSION"
+                     )
+    parser.add_option("--hint",
+                      action="append",
+                      help="Specify a HINT. A HINT has the form "
+                           "REGEXP,FLAG{,FLAG}. REGEXP is a regular "
+                           "expression that is matched with the module "
+                           "path. FLAG is a string that gives hints how to "
+                           "treat that module. You can specify more than "
+                           "one hint. Currently known FLAGS are \"path\" "
+                           "and \"tagless\". A default for this option can "
+                           "be put in a configuration file.",
+                      metavar="HINT"
+                     )
+    parser.add_option("--missing-tag",
+                      action="store_true",
+                      help="Show directories where a repository was "
+                           "found but no tag. "
+                           "A default for this option can be put in a "
+                           "configuration file.",
+                     )
+    parser.add_option("--missing-repo",
+                      action="store_true",
+                      help="Show directories where no repository was found. "
+                           "A default for this option can be put in a "
+                           "configuration file.",
+                     )
+    parser.add_option("-t", "--buildtag",
+                      action="store",
+                      type="string",
+                      help="Scan only directories of the given buildtag.",
+                      metavar="BUILDTAG"
+                     )
+    parser.add_option("-p", "--progress",
+                      action="store_true",
+                      help="Show progress on stderr. "
+                           "A default for this option can be put in a "
+                           "configuration file.",
+                     )
+    parser.add_option("--trace",
+                      action="store_true",
+                      help="Switch on some trace messages.",
+                     )
+    parser.add_option("--exceptions",
+                      action="store_true",
+                      help="On fatal errors that raise python "
+                           "exceptions, don't catch these. This will "
+                           "show a python stacktrace instead of an "
+                           "error message and may be useful for "
+                           "debugging the program."
+                     )
+    parser.add_option("-v", "--verbose",
+                      action="store_true",
+                      help="Show command calls. "
+                           "A default for this option can be put in a "
+                           "configuration file.",
+                     )
+    parser.add_option("-n", "--dry-run",
+                      action="store_true",
+                      help="Just show what the program would do.",
+                     )
+
+    # x= sys.argv
+    (options, args) = parser.parse_args()
+    # options: the options-object
+    # args: list of left-over args
+
+    if options.summary:
+        print_summary()
+        sys.exit(0)
+
+    if options.test:
+        _test()
+        sys.exit(0)
+
+    # we could pass "args" as an additional parameter to process here if it
+    # would be needed to process remaining command line arguments.
+    process(options, args)
+    sys.exit(0)
+
+if __name__ == "__main__":
+    main()

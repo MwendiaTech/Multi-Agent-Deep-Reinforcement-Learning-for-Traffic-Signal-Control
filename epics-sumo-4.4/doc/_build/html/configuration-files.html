@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html class="writer-html5" lang="en" >
+<head>
+  <meta charset="utf-8" /><meta name="generator" content="Docutils 0.17.1: http://docutils.sourceforge.net/" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Configuration Files &mdash; EPICS-sumo 4.4 documentation</title>
+      <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <!--[if lt IE 9]>
+    <script src="_static/js/html5shiv.min.js"></script>
+  <![endif]-->
+  
+        <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+        <script src="_static/jquery.js"></script>
+        <script src="_static/underscore.js"></script>
+        <script src="_static/doctools.js"></script>
+    <script src="_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="sumo-scan" href="reference-sumo-scan.html" />
+    <link rel="prev" title="Module Specifications" href="modulespecs.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+            <a href="index.html" class="icon icon-home"> EPICS-sumo
+          </a>
+              <div class="version">
+                4.4
+              </div>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="sumo-install.html">Installing Sumo</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="sumo-install.html#parts-of-sumo">Parts of sumo</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sumo-install.html#requirements">Requirements</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sumo-install.html#install-from-pypi-with-pip">Install from pypi with pip</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sumo-install.html#install-from-a-debian-package">Install from a debian package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sumo-install.html#install-from-a-rpm-package">Install from a rpm package</a></li>
+<li class="toctree-l2"><a class="reference internal" href="sumo-install.html#install-from-source-tar-gz-or-zip-file">Install from source (tar.gz or zip file)</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="sumo-install.html#install-as-root-to-default-directories">Install as root to default directories</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sumo-install.html#install-to-a-separate-directory">Install to a separate directory</a></li>
+<li class="toctree-l3"><a class="reference internal" href="sumo-install.html#install-in-your-home">Install in your home</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="sumo-install.html#the-sumo-configuration-file">The sumo configuration file</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#the-problem">The problem</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#new-version-of-a-direct-dependency">New version of a direct dependency</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#new-version-of-an-indirect-dependency">New version of an indirect dependency</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#the-overall-picture">The overall picture</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#the-solution">The solution</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#builds">Builds</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#database-files-and-directories">Database files and directories</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#creating-a-build">Creating a build</a></li>
+<li class="toctree-l3"><a class="reference internal" href="introduction.html#using-a-build">Using a build</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="introduction.html#the-implementation">The implementation</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="modulespecs.html">Module Specifications</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="modulespecs.html#sources-of-module-specifications">Sources of module specifications</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="modulespecs.html#the-configuration-file">The configuration file</a></li>
+<li class="toctree-l3"><a class="reference internal" href="modulespecs.html#the-command-line-option-m-or-module">The command line option “-m” or “–module”</a></li>
+<li class="toctree-l3"><a class="reference internal" href="modulespecs.html#arguments-to-a-command">Arguments to a command</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="modulespecs.html#combining-all-module-specifications">Combining all module specifications</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="modulespecs.html#override-mode">Override mode</a></li>
+<li class="toctree-l3"><a class="reference internal" href="modulespecs.html#append-mode">Append mode</a></li>
+<li class="toctree-l3"><a class="reference internal" href="modulespecs.html#processing-the-list">Processing the list</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="modulespecs.html#the-format-of-a-module-specification">The format of a module specification</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="modulespecs.html#module-versions">Module versions</a></li>
+<li class="toctree-l3"><a class="reference internal" href="modulespecs.html#commands">Commands</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="modulespecs.html#clear">clear</a></li>
+<li class="toctree-l4"><a class="reference internal" href="modulespecs.html#rm">rm</a></li>
+<li class="toctree-l4"><a class="reference internal" href="modulespecs.html#load">load</a></li>
+<li class="toctree-l4"><a class="reference internal" href="modulespecs.html#build">build</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Configuration Files</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#the-philosphy">The philosphy</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#file-format">File format</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#environment-variable-expansion">Environment variable expansion</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#using-more-than-one-configuration-file">Using more than one configuration file</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#default-paths">Default paths</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#the-config-option">The config option</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#load-commands-in-configuration-files">Load commands in configuration files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#the-configuration-file-for-sumo-scan">The configuration file for sumo-scan</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#keys-in-the-sumo-scan-configuration-file">Keys in the sumo-scan configuration file</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="#the-configuration-file-for-sumo">The configuration file for sumo</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#keys-in-the-sumo-configuration-file">Keys in the sumo configuration file</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#example-of-a-sumo-configuration-file">Example of a sumo configuration file</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#example-of-modules-files">Example of MODULES files</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="reference-sumo-scan.html">sumo-scan</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="reference-sumo-scan.html#what-the-script-does">What the script does</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference-sumo-scan.html#how-it-works">How it works</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo-scan.html#phase-i-release-file-scanning">Phase I, RELEASE file scanning</a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo-scan.html#phase-ii-grouping">Phase II, Grouping</a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo-scan.html#phase-iii-repository-scan">Phase III, repository scan</a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo-scan.html#optional-phase-iv-name-to-paths-map">Optional Phase IV, name to paths map</a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo-scan.html#optional-phase-v-paths-to-names-map">Optional Phase V, paths to names map</a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo-scan.html#program-output">Program output</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="reference-sumo-scan.html#commands">Commands</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo-scan.html#config-list">config list</a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo-scan.html#config-show-optionnames">config show [OPTIONNAMES]</a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo-scan.html#config-make-filename-optionnames">config make FILENAME [OPTIONNAMES]</a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo-scan.html#all">all</a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo-scan.html#deps">deps</a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo-scan.html#groups">groups</a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo-scan.html#repos">repos</a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo-scan.html#name2paths">name2paths</a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo-scan.html#path2names">path2names</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="reference-sumo-scan.html#options">Options</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="reference-sumo.html">sumo</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="reference-sumo.html#what-the-script-does">What the script does</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference-sumo.html#how-it-works">How it works</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#the-dependency-database">The dependency database</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#aliases">aliases</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#dependencies">dependencies</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#extra">extra</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#make-recipes">make-recipes</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#releasefile">releasefile</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#source">source</a><ul>
+<li class="toctree-l5"><a class="reference internal" href="reference-sumo.html#path">path</a></li>
+<li class="toctree-l5"><a class="reference internal" href="reference-sumo.html#tar">tar</a></li>
+<li class="toctree-l5"><a class="reference internal" href="reference-sumo.html#darcs">darcs</a></li>
+<li class="toctree-l5"><a class="reference internal" href="reference-sumo.html#hg">hg</a></li>
+<li class="toctree-l5"><a class="reference internal" href="reference-sumo.html#git">git</a></li>
+<li class="toctree-l5"><a class="reference internal" href="reference-sumo.html#svn">svn</a></li>
+<li class="toctree-l5"><a class="reference internal" href="reference-sumo.html#cvs">cvs</a></li>
+</ul>
+</li>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#weight">weight</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#the-scan-database">The scan database</a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#the-build-database">The build database</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#moduledata">moduledata</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#linkdata">linkdata</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#state">state</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#configuration-files">Configuration Files</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="reference-sumo.html#commands">Commands</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#maincommands">maincommands</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#help-command">help COMMAND</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#config-subcommand">config SUBCOMMAND</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#lock-file">lock FILE</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#unlock-file">unlock FILE</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#db-subcommand">db SUBCOMMAND</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#build-subcommand">build SUBCOMMAND</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#subcommands-for-maincommand-config">subcommands for maincommand “config”</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#config-list">config list</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#config-local-directory">config local DIRECTORY</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#config-make-filename-optionnames">config make FILENAME [OPTIONNAMES]</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#config-new-directory-template">config new DIRECTORY TEMPLATE</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#config-show-optionnames">config show [OPTIONNAMES]</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#config-standalone-directory">config standalone DIRECTORY</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#subcommands-for-maincommand-db">subcommands for maincommand “db”</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#db-alias-add-module-dependency-alias">db alias-add MODULE DEPENDENCY ALIAS</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#db-appconvert-scanfile">db appconvert SCANFILE</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#db-check">db check</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#db-clonemodule-old-module-new-module-versions">db clonemodule OLD-MODULE NEW-MODULE [VERSIONS]</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#db-cloneversion-module-old-version-new-version-sourcespec">db cloneversion MODULE OLD-VERSION NEW-VERSION [SOURCESPEC]</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#db-commands-module-lines">db commands MODULE LINES</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#db-convert-scanfile">db convert SCANFILE</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#db-dependency-add-module-dependency">db dependency-add MODULE DEPENDENCY</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#db-dependency-delete-module-dependency">db dependency-delete MODULE DEPENDENCY</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#db-edit">db edit</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#db-extra-module-lines">db extra MODULE [LINES]</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#db-find-regexp">db find REGEXP</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#db-format">db format</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#db-list-modules">db list MODULES</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#db-make-recipes-module-target-lines">db make-recipes MODULE [TARGET] [LINES]</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#db-merge-db">db merge DB</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#db-modconvert-scanfile-modules">db modconvert SCANFILE MODULES</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#db-releasefilename-module-releasefilename">db releasefilename MODULE RELEASEFILENAME</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#db-replaceversion-module-old-version-new-version">db replaceversion MODULE OLD-VERSION NEW-VERSION</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#db-show-modules">db show MODULES</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#db-weight-weight-modules">db weight WEIGHT MODULES</a></li>
+</ul>
+</li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#subcommands-for-maincommand-build">subcommands for maincommand “build”</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#build-delete-buildtags">build delete BUILDTAGS</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#build-find-modules">build find MODULES</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#build-getmodules-buildtag-modules">build getmodules BUILDTAG [MODULES]</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#build-list">build list</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#build-new-modules">build new MODULES</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#build-remake-buildtag">build remake BUILDTAG</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#build-show-buildtag">build show BUILDTAG</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#build-showmodules-buildtag">build showmodules [BUILDTAG]</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#build-showdependencies-buildtag">build showdependencies [BUILDTAG]</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#build-showdependents-buildtag">build showdependents [BUILDTAG]</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#build-state-buildtag-new-state">build state BUILDTAG [NEW-STATE]</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#build-try-modules">build try MODULES</a></li>
+<li class="toctree-l4"><a class="reference internal" href="reference-sumo.html#build-use-modules">build use MODULES</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="reference-sumo.html#command-completion">Command completion</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#prerequisites">Prerequisites</a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#activate-command-completion-on-the-fly">Activate command completion on the fly</a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#activate-command-completion-permanently">Activate command completion permanently</a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#completion-cache-files">Completion cache files</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="reference-sumo.html#the-help-pager">The help pager</a></li>
+<li class="toctree-l2"><a class="reference internal" href="reference-sumo.html#options">Options</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#opt-postload-files"><code class="docutils literal notranslate"><span class="pre">--#opt-postload</span> <span class="pre">FILES</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#opt-preload-files"><code class="docutils literal notranslate"><span class="pre">--#opt-preload</span> <span class="pre">FILES</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#postload-files"><code class="docutils literal notranslate"><span class="pre">--#postload</span> <span class="pre">FILES</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#preload-files"><code class="docutils literal notranslate"><span class="pre">--#preload</span> <span class="pre">FILES</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#a-alias-alias-alias"><code class="docutils literal notranslate"><span class="pre">-a</span> <span class="pre">ALIAS,</span> <span class="pre">--alias</span> <span class="pre">ALIAS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#all-builds"><code class="docutils literal notranslate"><span class="pre">--all-builds</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#a-append-optionname"><code class="docutils literal notranslate"><span class="pre">-A,</span> <span class="pre">--append</span> <span class="pre">OPTIONNAME</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#b-brief"><code class="docutils literal notranslate"><span class="pre">-b,</span> <span class="pre">--brief</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#builddir-builddir"><code class="docutils literal notranslate"><span class="pre">--builddir</span> <span class="pre">BUILDDIR</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#t-buildtag-buildtag-buildtag"><code class="docutils literal notranslate"><span class="pre">-t</span> <span class="pre">BUILDTAG,</span> <span class="pre">--buildtag</span> <span class="pre">BUILDTAG</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#buildtag-stem-stem"><code class="docutils literal notranslate"><span class="pre">--buildtag-stem</span> <span class="pre">STEM</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#c-file-config-file"><code class="docutils literal notranslate"><span class="pre">-c</span> <span class="pre">FILE,</span> <span class="pre">--config</span> <span class="pre">FILE</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#dbdir-dbdir"><code class="docutils literal notranslate"><span class="pre">--dbdir</span> <span class="pre">DBDIR</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#dbrepo-repository"><code class="docutils literal notranslate"><span class="pre">--dbrepo</span> <span class="pre">REPOSITORY</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#dbrepomode-mode"><code class="docutils literal notranslate"><span class="pre">--dbrepomode</span> <span class="pre">MODE</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#detail-no"><code class="docutils literal notranslate"><span class="pre">--detail</span> <span class="pre">NO</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#d-expression-dir-patch-expression"><code class="docutils literal notranslate"><span class="pre">-D</span> <span class="pre">EXPRESSION,</span> <span class="pre">--dir-patch</span> <span class="pre">EXPRESSION</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#disable-loading"><code class="docutils literal notranslate"><span class="pre">--disable-loading</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#n-dry-run"><code class="docutils literal notranslate"><span class="pre">-n,</span> <span class="pre">--dry-run</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#dump-modules"><code class="docutils literal notranslate"><span class="pre">--dump-modules</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#dumpdb"><code class="docutils literal notranslate"><span class="pre">--dumpdb</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#editor-editor"><code class="docutils literal notranslate"><span class="pre">--editor</span> <span class="pre">EDITOR</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#exceptions"><code class="docutils literal notranslate"><span class="pre">--exceptions</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#x-regexp-exclude-states-regexp"><code class="docutils literal notranslate"><span class="pre">-X</span> <span class="pre">REGEXP,</span> <span class="pre">--exclude-states</span> <span class="pre">REGEXP</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#x-extraline-extra-extralline"><code class="docutils literal notranslate"><span class="pre">-x</span> <span class="pre">EXTRALINE,</span> <span class="pre">--extra</span> <span class="pre">EXTRALLINE</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#getmodules-buildtag"><code class="docutils literal notranslate"><span class="pre">--getmodules</span> <span class="pre">BUILDTAG</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#h-options-help-options"><code class="docutils literal notranslate"><span class="pre">-h</span> <span class="pre">[OPTIONS],</span> <span class="pre">--help</span> <span class="pre">[OPTIONS]</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#jobs"><code class="docutils literal notranslate"><span class="pre">--jobs</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#lines"><code class="docutils literal notranslate"><span class="pre">--lines</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#list"><code class="docutils literal notranslate"><span class="pre">--list</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#localbuilddir-builddir"><code class="docutils literal notranslate"><span class="pre">--localbuilddir</span> <span class="pre">BUILDDIR</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#logmsg-logmessage"><code class="docutils literal notranslate"><span class="pre">--logmsg</span> <span class="pre">LOGMESSAGE</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#makeflags-makeflags"><code class="docutils literal notranslate"><span class="pre">--makeflags</span> <span class="pre">MAKEFLAGS</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#m-module-module-module"><code class="docutils literal notranslate"><span class="pre">-m</span> <span class="pre">MODULE,</span> <span class="pre">--module</span> <span class="pre">MODULE</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#no-checkout"><code class="docutils literal notranslate"><span class="pre">--no-checkout</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#c-no-default-config"><code class="docutils literal notranslate"><span class="pre">-C,</span> <span class="pre">--no-default-config</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#n-no-err-build-exists"><code class="docutils literal notranslate"><span class="pre">-N,</span> <span class="pre">--no-err-build-exists</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#no-make"><code class="docutils literal notranslate"><span class="pre">--no-make</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#noignorecase"><code class="docutils literal notranslate"><span class="pre">--noignorecase</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#nolock"><code class="docutils literal notranslate"><span class="pre">--nolock</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#o-outputfile-output-outputfile"><code class="docutils literal notranslate"><span class="pre">-o</span> <span class="pre">OUTPUTFILE,</span> <span class="pre">--output</span> <span class="pre">OUTPUTFILE</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#p-progress"><code class="docutils literal notranslate"><span class="pre">-p,</span> <span class="pre">--progress</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#readonly"><code class="docutils literal notranslate"><span class="pre">--readonly</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#recursive"><code class="docutils literal notranslate"><span class="pre">--recursive</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#scandb-scandb"><code class="docutils literal notranslate"><span class="pre">--scandb</span> <span class="pre">SCANDB</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#sort-build-dependencies-first"><code class="docutils literal notranslate"><span class="pre">--sort-build-dependencies-first</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#sort-build-dependencies-last"><code class="docutils literal notranslate"><span class="pre">--sort-build-dependencies-last</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#summary"><code class="docutils literal notranslate"><span class="pre">--summary</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#test"><code class="docutils literal notranslate"><span class="pre">--test</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#trace"><code class="docutils literal notranslate"><span class="pre">--trace</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#tracemore"><code class="docutils literal notranslate"><span class="pre">--tracemore</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#u-expression-url-patch-expression"><code class="docutils literal notranslate"><span class="pre">-U</span> <span class="pre">EXPRESSION,</span> <span class="pre">--url-patch</span> <span class="pre">EXPRESSION</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#v-verbose"><code class="docutils literal notranslate"><span class="pre">-v,</span> <span class="pre">--verbose</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#version"><code class="docutils literal notranslate"><span class="pre">--version</span></code></a></li>
+<li class="toctree-l3"><a class="reference internal" href="reference-sumo.html#y-yes"><code class="docutils literal notranslate"><span class="pre">-y,</span> <span class="pre">--yes</span></code></a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="app-usage.html">Using sumo in your application</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="app-usage.html#use-supports-in-an-application">Use supports in an application</a></li>
+<li class="toctree-l2"><a class="reference internal" href="app-usage.html#use-a-different-version-of-a-support">Use a different version of a support</a></li>
+<li class="toctree-l2"><a class="reference internal" href="app-usage.html#details">Details</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="app-usage.html#modules">MODULES</a></li>
+<li class="toctree-l3"><a class="reference internal" href="app-usage.html#release-for-bl-001">RELEASE for BL-001</a></li>
+<li class="toctree-l3"><a class="reference internal" href="app-usage.html#release-for-bl-002">RELEASE for BL-002</a></li>
+<li class="toctree-l3"><a class="reference internal" href="app-usage.html#makefile-for-bl-002">Makefile for BL-002</a></li>
+<li class="toctree-l3"><a class="reference internal" href="app-usage.html#builds-db">BUILDS.DB</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="dev-usage.html">Develop support modules with sumo</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="dev-usage.html#create-the-sandbox">Create the sandbox</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dev-usage.html#create-a-head-version-of-a-module">Create a “HEAD” version of a module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dev-usage.html#build-the-module-for-the-first-time">Build the module for the first time</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dev-usage.html#change-and-recompile">Change and recompile</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dev-usage.html#test-in-an-application">Test in an application</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dev-usage.html#commit-the-changes-and-define-a-tag">Commit the changes and define a tag</a></li>
+<li class="toctree-l2"><a class="reference internal" href="dev-usage.html#add-the-new-support-to-the-dependency-database">Add the new support to the dependency database</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="example-sumo-build-try.html">Example for sumo build try</a></li>
+<li class="toctree-l1"><a class="reference internal" href="demo.html">sumo demo</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="demo.html#build-an-epics-example">Build an EPICS example</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="demo.html#prepare-the-directory">Prepare the directory</a></li>
+<li class="toctree-l3"><a class="reference internal" href="demo.html#set-up-the-support-and-application-directories">Set up the support and application directories</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="demo.html#set-up-sumo">Set up sumo</a></li>
+<li class="toctree-l2"><a class="reference internal" href="demo.html#migrate-the-example-for-usage-with-sumo">Migrate the example for usage with sumo</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="demo.html#scan-the-support-directory-and-create-a-dependency-database">Scan the support directory and create a dependency database</a></li>
+<li class="toctree-l3"><a class="reference internal" href="demo.html#create-a-copy-of-the-sources-of-the-original-application">Create a copy of the sources of the original application</a></li>
+<li class="toctree-l3"><a class="reference internal" href="demo.html#scan-the-application-to-create-a-modules-file">Scan the application to create a MODULES file</a></li>
+<li class="toctree-l3"><a class="reference internal" href="demo.html#rebuild-the-application-now-with-sumo">Rebuild the application, now with sumo</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="demo.html#what-to-do-now">What to do now</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="migration-examples.html">Migrating supports and applications</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="migration-examples.html#migrating-the-support-directory">Migrating the support directory</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="migration-examples.html#set-up-the-sumo-directory">Set up the sumo directory</a></li>
+<li class="toctree-l3"><a class="reference internal" href="migration-examples.html#scan-the-support-directory-with-sumo-scan">Scan the support directory with sumo-scan</a></li>
+<li class="toctree-l3"><a class="reference internal" href="migration-examples.html#apply-changes-to-the-scan-file-optional">Apply changes to the scan file (optional)</a></li>
+<li class="toctree-l3"><a class="reference internal" href="migration-examples.html#create-the-dependency-database">Create the dependency database</a></li>
+<li class="toctree-l3"><a class="reference internal" href="migration-examples.html#create-the-sumo-configuration-file">Create the sumo configuration file</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="migration-examples.html#migrating-a-single-support">Migrating a single support</a></li>
+<li class="toctree-l2"><a class="reference internal" href="migration-examples.html#migrating-an-application">Migrating an application</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="migration-examples.html#create-configuration-file-and-module-list">Create configuration file and module list</a></li>
+<li class="toctree-l3"><a class="reference internal" href="migration-examples.html#build-all-support-modules-the-application-requires">Build all support modules the application requires</a></li>
+<li class="toctree-l3"><a class="reference internal" href="migration-examples.html#use-the-support-modules-in-the-application">Use the support modules in the application</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="contribute.html">How to Contribute</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="contribute.html#patch-files">Patch files</a></li>
+<li class="toctree-l2"><a class="reference internal" href="contribute.html#mercurial-patch-bundle">Mercurial patch bundle</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="glossary.html">Glossary</a></li>
+<li class="toctree-l1"><a class="reference internal" href="license.html">SUMO license</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="index.html">EPICS-sumo</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="index.html" class="icon icon-home"></a> &raquo;</li>
+      <li>Configuration Files</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="_sources/configuration-files.rst.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="configuration-files">
+<h1>Configuration Files<a class="headerlink" href="#configuration-files" title="Permalink to this headline"></a></h1>
+<section id="the-philosphy">
+<h2>The philosphy<a class="headerlink" href="#the-philosphy" title="Permalink to this headline"></a></h2>
+<p>In sumo all parameters for a command are given with command line options and
+arguments. Configuration files are files that have defaults for command line
+options.</p>
+<p>All command line options start with a dash “<code class="docutils literal notranslate"><span class="pre">-</span></code>”. Short command line options have
+the form “<code class="docutils literal notranslate"><span class="pre">-&lt;char&gt;</span></code>”, long command line options have the form “<code class="docutils literal notranslate"><span class="pre">--&lt;string&gt;</span></code>”.</p>
+<p>All command line options have a long form, some also have a short form.</p>
+<p>Some command line options take no argument, some options require an argument.
+Some command line options may be given more than once with an argument, they
+are used to define lists of values.</p>
+<p>The configuration file defines a map where keys are names of long command line
+options and values are booleans, strings or lists of strings. Only some of the
+command line options can be put in a configuration file.</p>
+<p>For sumo-scan you find a list of these at
+<a class="reference internal" href="#keys-in-the-sumo-scan-configuration-file">Keys in the sumo-scan configuration file</a>.</p>
+<p>For sumo you find a list of these at
+<a class="reference internal" href="#keys-in-the-sumo-configuration-file">Keys in the sumo configuration file</a>.</p>
+</section>
+<section id="file-format">
+<h2>File format<a class="headerlink" href="#file-format" title="Permalink to this headline"></a></h2>
+<p>A configuration file is always in <a class="reference external" href="http://www.json.org">JSON</a>
+format. Each key is the long name of a command line option, each value is a
+boolean, a string or a list of strings.</p>
+<p>Here is an example of such a file:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;dbdir&quot;</span><span class="p">:</span> <span class="s2">&quot;/opt/Epics/sumo/database&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;makeflags&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">&quot;-s&quot;</span>
+    <span class="p">],</span>
+    <span class="s2">&quot;builddir&quot;</span><span class="p">:</span> <span class="s2">&quot;/opt/Epics/sumo/build&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+<section id="environment-variable-expansion">
+<h2>Environment variable expansion<a class="headerlink" href="#environment-variable-expansion" title="Permalink to this headline"></a></h2>
+<p>A few keys in the configuration file of sumo have environment variable
+expansion. This means that strings of the form <code class="docutils literal notranslate"><span class="pre">$VARNAME</span></code> are substituted
+with the value of environment variable <code class="docutils literal notranslate"><span class="pre">VARNAME</span></code> if it exists. If you want to
+use the string <code class="docutils literal notranslate"><span class="pre">$VARNAME</span></code> literally, precede it with a backslash like in
+<code class="docutils literal notranslate"><span class="pre">\$VARNAME</span></code>. The list <a class="reference internal" href="#keys-in-the-sumo-configuration-file">Keys in the sumo configuration file</a> shows you which
+keys have environment variable expansion.</p>
+</section>
+<section id="using-more-than-one-configuration-file">
+<h2>Using more than one configuration file<a class="headerlink" href="#using-more-than-one-configuration-file" title="Permalink to this headline"></a></h2>
+<p>Sumo can read more than just one configuration file, in this case the data is
+<em>merged</em>.</p>
+<p>The files are read one by one and their keys and values are combined in the in
+the following way:</p>
+<p>Keys not yet defined are simply added. For keys that already exist and whose values
+are not lists, the last value overwrites the first one.  For keys that
+already exist and whose values are lists, the lists are concatenated.</p>
+</section>
+<section id="default-paths">
+<h2>Default paths<a class="headerlink" href="#default-paths" title="Permalink to this headline"></a></h2>
+<p id="configuration-files-paths">Sumo reads and merges configuration files from various places, which ones
+depends on your environment variable settings and command line options.</p>
+<p>First the program tries to read the file sumo.config from a list of default
+paths. The list of default paths can be set by the environment variable
+SUMOCONFIG which must be a colon (on Unix systems) or semicolon (on Windows
+systems) separated list of paths.</p>
+<p>If SUMOCONFIG <em>is not set</em>, these are the predefined default paths:</p>
+<ul class="simple">
+<li><p>/etc</p></li>
+<li><p>[python-libdir]/sumolib</p></li>
+<li><p>$HOME</p></li>
+<li><p>your current working directory</p></li>
+</ul>
+<p>Note the sumo reads <em>all</em> the configuration files it finds, not just the first
+one.</p>
+<p>If you use the <code class="docutils literal notranslate"><span class="pre">--no-default-config</span></code> command line option, the list of default
+paths is made empty.</p>
+</section>
+<section id="the-config-option">
+<h2>The config option<a class="headerlink" href="#the-config-option" title="Permalink to this headline"></a></h2>
+<p>After configuration files from default paths were read the program continues
+with all configuration files specified by the <code class="docutils literal notranslate"><span class="pre">-c</span></code> or <code class="docutils literal notranslate"><span class="pre">--config</span></code> option.</p>
+</section>
+<section id="load-commands-in-configuration-files">
+<h2>Load commands in configuration files<a class="headerlink" href="#load-commands-in-configuration-files" title="Permalink to this headline"></a></h2>
+<p id="configuration-files-loading">In a configuration file you can specify names of other configuration files that
+must or may be loaded. These files are merged as described above.</p>
+<p>There are 4 special keys in the configuration file that are used to specify
+other files:</p>
+<dl class="simple">
+<dt>#preload [file list]</dt><dd><p>Load files <em>before</em> all other definitions</p>
+</dd>
+<dt>#opt-preload [file list]</dt><dd><p>Load files <em>before</em> all other definitions, if they exist.</p>
+</dd>
+<dt>#postload [file list]</dt><dd><p>Load files <em>after</em> all other definitions</p>
+</dd>
+<dt>#opt-postload [file list]</dt><dd><p>Load files <em>after</em> all other definitions, if they exist.</p>
+</dd>
+</dl>
+<p>Note that the loaded files can also contain one or more these special keys.</p>
+</section>
+<section id="the-configuration-file-for-sumo-scan">
+<h2>The configuration file for sumo-scan<a class="headerlink" href="#the-configuration-file-for-sumo-scan" title="Permalink to this headline"></a></h2>
+<p>The default name of this file is sumo-scan.config.</p>
+<section id="keys-in-the-sumo-scan-configuration-file">
+<h3>Keys in the sumo-scan configuration file<a class="headerlink" href="#keys-in-the-sumo-scan-configuration-file" title="Permalink to this headline"></a></h3>
+<p>The following keys may be part of a configuration file for sumo-scan:</p>
+<dl class="simple">
+<dt>#preload</dt><dd><p>A list of files to <em>preload</em>, see
+<a class="reference internal" href="#configuration-files-loading"><span class="std std-ref">Loading other files</span></a>.</p>
+</dd>
+<dt>#opt-preload</dt><dd><p>A list of optional files to <em>preload</em>, see
+<a class="reference internal" href="#configuration-files-loading"><span class="std std-ref">Loading other files</span></a>.</p>
+</dd>
+<dt>#postload</dt><dd><p>A list of files to <em>postload</em>, see
+<a class="reference internal" href="#configuration-files-loading"><span class="std std-ref">Loading other files</span></a>.</p>
+</dd>
+<dt>#opt-postload</dt><dd><p>A list of optional files to <em>postload</em>, see
+<a class="reference internal" href="#configuration-files-loading"><span class="std std-ref">Loading other files</span></a>.</p>
+</dd>
+<dt>dir</dt><dd><p>A list of directories to parse, for details see
+<a class="reference internal" href="reference-sumo-scan.html#reference-sumo-scan-options"><span class="std std-ref">sumo-scan options</span></a>.</p>
+</dd>
+<dt>exclude-deps</dt><dd><p>A list of regular expressions for dependencies to exclude, for details see
+<a class="reference internal" href="reference-sumo-scan.html#reference-sumo-scan-options"><span class="std std-ref">sumo-scan options</span></a>.</p>
+</dd>
+<dt>exclude-path</dt><dd><p>A list of regular expressions for paths to exclude, for details see
+<a class="reference internal" href="reference-sumo-scan.html#reference-sumo-scan-options"><span class="std std-ref">sumo-scan options</span></a>.</p>
+</dd>
+<dt>group-basedir</dt><dd><p>A list of existing support directories, for details see
+<a class="reference internal" href="reference-sumo-scan.html#reference-sumo-scan-options"><span class="std std-ref">sumo-scan options</span></a>.</p>
+</dd>
+<dt>hint</dt><dd><p>A list of conversion hints, for details see
+<a class="reference internal" href="reference-sumo-scan.html#reference-sumo-scan-options"><span class="std std-ref">sumo-scan options</span></a>.</p>
+</dd>
+<dt>ignore-changes</dt><dd><p>A list of regular expressions for changes to ignore,
+for details see <a class="reference internal" href="reference-sumo-scan.html#reference-sumo-scan-options"><span class="std std-ref">sumo-scan options</span></a>.</p>
+</dd>
+<dt>ignore-name</dt><dd><p>A list of names that are ignored in RELEASE files,
+for details see <a class="reference internal" href="reference-sumo-scan.html#reference-sumo-scan-options"><span class="std std-ref">sumo-scan options</span></a>.</p>
+</dd>
+<dt>missing-repo</dt><dd><p>A boolean flag that controls the printing of warnings,
+for details see <a class="reference internal" href="reference-sumo-scan.html#reference-sumo-scan-options"><span class="std std-ref">sumo-scan options</span></a>.</p>
+</dd>
+<dt>missing-tag</dt><dd><p>A boolean flag that controls the printing of warnings,
+for details see <a class="reference internal" href="reference-sumo-scan.html#reference-sumo-scan-options"><span class="std std-ref">sumo-scan options</span></a>.</p>
+</dd>
+<dt>progress</dt><dd><p>A boolean flag that controls the printing of progress markers,
+for details see <a class="reference internal" href="reference-sumo-scan.html#reference-sumo-scan-options"><span class="std std-ref">sumo-scan options</span></a>.</p>
+</dd>
+<dt>dir-patch</dt><dd><p>A list of directory patch expressions,
+for details see <a class="reference internal" href="reference-sumo-scan.html#reference-sumo-scan-options"><span class="std std-ref">sumo-scan options</span></a>.</p>
+</dd>
+<dt>url-patch</dt><dd><p>A list of url patch expressions,
+for details see <a class="reference internal" href="reference-sumo-scan.html#reference-sumo-scan-options"><span class="std std-ref">sumo-scan options</span></a>.</p>
+</dd>
+<dt>verbose</dt><dd><p>A boolean flag that controls the verbosity level,
+for details see <a class="reference internal" href="reference-sumo-scan.html#reference-sumo-scan-options"><span class="std std-ref">sumo-scan options</span></a>.</p>
+</dd>
+</dl>
+</section>
+</section>
+<section id="the-configuration-file-for-sumo">
+<h2>The configuration file for sumo<a class="headerlink" href="#the-configuration-file-for-sumo" title="Permalink to this headline"></a></h2>
+<p>The default name of this file is sumo.config.</p>
+<section id="keys-in-the-sumo-configuration-file">
+<h3>Keys in the sumo configuration file<a class="headerlink" href="#keys-in-the-sumo-configuration-file" title="Permalink to this headline"></a></h3>
+<p>The following keys may be part of a configuration file for sumo:</p>
+<dl class="simple">
+<dt>#opt-postload</dt><dd><p>A list of optional files to <em>postload</em>, see
+<a class="reference internal" href="#configuration-files-loading"><span class="std std-ref">Loading other files</span></a>.</p>
+</dd>
+<dt>#opt-preload</dt><dd><p>A list of optional files to <em>preload</em>, see
+<a class="reference internal" href="#configuration-files-loading"><span class="std std-ref">Loading other files</span></a>.</p>
+</dd>
+<dt>#postload</dt><dd><p>A list of files to <em>postload</em>, see
+<a class="reference internal" href="#configuration-files-loading"><span class="std std-ref">Loading other files</span></a>.</p>
+</dd>
+<dt>#preload</dt><dd><p>A list of files to <em>preload</em>, see
+<a class="reference internal" href="#configuration-files-loading"><span class="std std-ref">Loading other files</span></a>.</p>
+</dd>
+<dt>alias</dt><dd><p>A list of module aliases in the form FROM:TO,
+for details see <a class="reference internal" href="reference-sumo.html#reference-sumo-options"><span class="std std-ref">sumo options</span></a>.</p>
+</dd>
+<dt>builddir</dt><dd><p>The build directory,
+for details see <a class="reference internal" href="reference-sumo.html#reference-sumo-options"><span class="std std-ref">sumo options</span></a>. This key has
+<a class="reference internal" href="#environment-variable-expansion">Environment variable expansion</a>.</p>
+</dd>
+<dt>buildtag-stem</dt><dd><p>A string that specifies a buildtag stem,
+for details see <a class="reference internal" href="reference-sumo.html#reference-sumo-options"><span class="std std-ref">sumo options</span></a>.</p>
+</dd>
+<dt>dbdir</dt><dd><p>The directory where the dependency database file is found for details see
+<a class="reference internal" href="reference-sumo.html#reference-sumo-options"><span class="std std-ref">sumo options</span></a>. This key has
+<a class="reference internal" href="#environment-variable-expansion">Environment variable expansion</a>.</p>
+</dd>
+<dt>dbrepo</dt><dd><p>The url of the dependency database foreign repository,
+for details see <a class="reference internal" href="reference-sumo.html#reference-sumo-options"><span class="std std-ref">sumo options</span></a>. This key has
+<a class="reference internal" href="#environment-variable-expansion">Environment variable expansion</a>.</p>
+</dd>
+<dt>dbrepomode</dt><dd><p>A string that specifies the mode for the dependency database repository,
+for details see <a class="reference internal" href="reference-sumo.html#reference-sumo-options"><span class="std std-ref">sumo options</span></a>.</p>
+</dd>
+<dt>dir-patch</dt><dd><p>A list of directory patch expressions for the <code class="docutils literal notranslate"><span class="pre">db</span> <span class="pre">convert</span></code> and
+<code class="docutils literal notranslate"><span class="pre">db</span> <span class="pre">modconvert</span></code> commands. For details see
+<a class="reference internal" href="reference-sumo.html#reference-sumo-options"><span class="std std-ref">sumo options</span></a>.</p>
+</dd>
+<dt>editor</dt><dd><p>A string that specifies the editor for command <code class="docutils literal notranslate"><span class="pre">sumo</span> <span class="pre">db</span> <span class="pre">edit</span></code>, for details
+see <a class="reference internal" href="reference-sumo.html#reference-sumo-options"><span class="std std-ref">sumo options</span></a>.</p>
+</dd>
+<dt>extra</dt><dd><p>A list of strings that defines extra lines that are put in generated RELEASE
+files,
+for details see <a class="reference internal" href="reference-sumo.html#reference-sumo-options"><span class="std std-ref">sumo options</span></a>.</p>
+</dd>
+<dt>jobs</dt><dd><p>Specify the maximum number of jobs in sumo to run simultaneously within
+sumo,
+for details see <a class="reference internal" href="reference-sumo.html#reference-sumo-options"><span class="std std-ref">sumo options</span></a>.</p>
+</dd>
+<dt>localbuilddir</dt><dd><p>The local build directory, for details see
+<a class="reference internal" href="reference-sumo.html#reference-sumo-options"><span class="std std-ref">sumo options</span></a>. This key has
+<a class="reference internal" href="#environment-variable-expansion">Environment variable expansion</a>.</p>
+</dd>
+<dt>makeflags</dt><dd><p>A list of strings that specify extra options for “make”,
+for details see <a class="reference internal" href="reference-sumo.html#reference-sumo-options"><span class="std std-ref">sumo options</span></a>.</p>
+</dd>
+<dt>module</dt><dd><p>A list of module specifications,
+for details see <a class="reference internal" href="reference-sumo.html#reference-sumo-options"><span class="std std-ref">sumo options</span></a>.</p>
+</dd>
+<dt>no-err-build-exists</dt><dd><p>When with <code class="docutils literal notranslate"><span class="pre">build</span> <span class="pre">new</span></code> a build matching the <a class="reference internal" href="glossary.html#term-modulespecs"><span class="xref std std-term">modulespecs</span></a>
+already exists, just print a warning and terminate without an error.
+For details see <a class="reference internal" href="reference-sumo.html#reference-sumo-options"><span class="std std-ref">sumo options</span></a>.</p>
+</dd>
+<dt>progress</dt><dd><p>A boolean flag that controls the printing of progress markers,
+for details see <a class="reference internal" href="reference-sumo.html#reference-sumo-options"><span class="std std-ref">sumo options</span></a>.</p>
+</dd>
+<dt>readonly</dt><dd><p>A boolean flag that sets sumo in read-only mode,
+for details see <a class="reference internal" href="reference-sumo.html#reference-sumo-options"><span class="std std-ref">sumo options</span></a>.</p>
+</dd>
+<dt>scandb</dt><dd><p>The filename of the scan database,
+for details see <a class="reference internal" href="reference-sumo.html#reference-sumo-options"><span class="std std-ref">sumo options</span></a>.</p>
+</dd>
+<dt>url-patch</dt><dd><p>A list of url patch expressions for the <code class="docutils literal notranslate"><span class="pre">db</span> <span class="pre">convert</span></code> and
+<code class="docutils literal notranslate"><span class="pre">db</span> <span class="pre">modconvert</span></code> commands. For details see
+for details see <a class="reference internal" href="reference-sumo.html#reference-sumo-options"><span class="std std-ref">sumo options</span></a>.</p>
+</dd>
+<dt>verbose</dt><dd><p>A boolean flag that controls the verbosity level,
+for details see <a class="reference internal" href="reference-sumo.html#reference-sumo-options"><span class="std std-ref">sumo options</span></a>.</p>
+</dd>
+</dl>
+</section>
+<section id="example-of-a-sumo-configuration-file">
+<h3>Example of a sumo configuration file<a class="headerlink" href="#example-of-a-sumo-configuration-file" title="Permalink to this headline"></a></h3>
+<p id="configuration-files-config-examples">Here is an example of our global sumo configuration file here at HZB:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;#opt-preload&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">&quot;configure/MODULES.HOST&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;configure/MODULES&quot;</span>
+    <span class="p">],</span>
+    <span class="s2">&quot;dbdir&quot;</span><span class="p">:</span> <span class="s2">&quot;/opt/Epics/sumo/database&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;dbrepo&quot;</span><span class="p">:</span> <span class="s2">&quot;darcs rcsadm@repo.acc.bessy.de:/opt/repositories/controls/darcs/epics/support/sumo-deps-db&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;dbrepomode&quot;</span><span class="p">:</span> <span class="s2">&quot;push&quot;</span><span class="p">,</span>
+    <span class="s2">&quot;builddir&quot;</span><span class="p">:</span> <span class="s2">&quot;/opt/Epics/sumo/build&quot;</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>Explanation:</p>
+<dl class="simple">
+<dt>builddir</dt><dd><p>This defines the directory where the builds are created and the build
+database file <a class="reference internal" href="glossary.html#term-BUILDS.DB"><span class="xref std std-term">BUILDS.DB</span></a> resides.</p>
+</dd>
+<dt>dbdir</dt><dd><p>The directory where the dependency database file <a class="reference internal" href="glossary.html#term-DEPS.DB"><span class="xref std std-term">DEPS.DB</span></a> is found,
+for details see <a class="reference internal" href="reference-sumo.html#reference-sumo-options"><span class="std std-ref">sumo options</span></a>.</p>
+</dd>
+<dt>dbrepo</dt><dd><p>This defines that the directory of the dependency database file in this
+example is a darcs repository. You could also use mercurial, git, subversion
+or cvs here. The long string after “<code class="docutils literal notranslate"><span class="pre">darcs</span></code>” is an <em>URL</em> that defines the
+location of the remote darcs repository. We use the same value of “dbrepo” on
+other build hosts in order to keep the dependency databases files on all
+build hosts identical.
+For details on the “dbrepo” string, see
+<a class="reference internal" href="reference-sumo.html#reference-sumo-options-dbrepo"><span class="std std-ref">sumo option –dbrepo</span></a>.</p>
+</dd>
+<dt>dbrepomode</dt><dd><p>Mode “<code class="docutils literal notranslate"><span class="pre">push</span></code>” means that before each read operation on the dependency
+database, sumo performs a “pull” and “merge” command and for all write
+operations it commits all changes and pushes them to the central repository.</p>
+</dd>
+<dt>#opt-preload</dt><dd><p>This defines that sumo tries to load “<code class="docutils literal notranslate"><span class="pre">configure/MODULES.HOST</span></code>” and
+“<code class="docutils literal notranslate"><span class="pre">configure/MODULES</span></code>” first, if these files exist. In our application our
+definition of used <a class="reference external" href="http://www.aps.anl.gov/epics">EPICS</a> support modules is
+placed in these two files. If we run “<code class="docutils literal notranslate"><span class="pre">sumo</span> <span class="pre">build</span> <span class="pre">use</span></code>” in the top
+directory of our application, sumo uses module definitions from these two
+files.</p>
+</dd>
+</dl>
+</section>
+<section id="example-of-modules-files">
+<h3>Example of MODULES files<a class="headerlink" href="#example-of-modules-files" title="Permalink to this headline"></a></h3>
+<p>Module definitions are configuration files where only the keys “<code class="docutils literal notranslate"><span class="pre">alias</span></code>” and
+“<code class="docutils literal notranslate"><span class="pre">module</span></code>” are defined. These are specific for each
+<a class="reference external" href="http://www.aps.anl.gov/epics">EPICS</a> application. Here are examples of
+MODULES.HOST and MODULES for our control system application:</p>
+<p>MODULES.HOST:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;alias&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">&quot;BASE:EPICS_BASE&quot;</span>
+    <span class="p">],</span>
+    <span class="s2">&quot;module&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">&quot;BASE:R3-14-12-2-7&quot;</span>
+    <span class="p">]</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+<p>MODULES:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="p">{</span>
+    <span class="s2">&quot;alias&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">&quot;AGILENT-SUPPORT:AGILENT_SUPPORT&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;APPS_CRATECTRL:CRATECTRL&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;APPS_GENERICBOOT:GENERIC_BOOT&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;APPS_GENERICTEMPLATE:GENERICTEMPLATE&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;APPS_IOCWATCH:IOCWATCHAPP&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;APPS_MOTOR:MOTORAPP&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;APPS_SCOPESAVERESTORE:SCOPE_SAVE_RESTORE&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;APPS_STREAMTEMPLATESANDPROTOCOLS:STAP&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;APPS_VACUUM:VACUUMAPP&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;BESSY_RULES:BESSYRULES&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;BSPDEP_CPUBOARDINIT:CPU_BOARD_INIT&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;BSPDEP_ENABLED32:ENABLE_D32&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;BSPDEP_TIMER:TIMER&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;CAPUTLOG:CA_PUT_LOG&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;DEVGPIB:DEV_GPIB&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;DEVIOCSTATS:IOCSTATS&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;DISTVERSION:DIST_VERSION&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;GENSUB:GEN_SUB&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;HIGHLAND-V375:V375&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;HIGHLAND-V680:V680&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;RFM2G-OSI:RFM2G&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;SEQ:SNCSEQ&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;STREAMDEVICE:STREAM&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;VXBOOTPARAMS:VX_BOOT_PARAMS&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;VXI-11:VXI_11&quot;</span>
+    <span class="p">],</span>
+    <span class="s2">&quot;module&quot;</span><span class="p">:</span> <span class="p">[</span>
+        <span class="s2">&quot;AGILENT-SUPPORT:R0-14&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;AGILENT:R2-3&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;ALARM:R3-8&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;APPS_CRATECTRL:R4-1-1&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;APPS_GENERICBOOT:R0-9&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;APPS_GENERICTEMPLATE:R3-7&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;APPS_IOCWATCH:R3-1&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;APPS_MOTOR:R3-1-3&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;APPS_SCOPESAVERESTORE:R2-1&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;APPS_STREAMTEMPLATESANDPROTOCOLS:R2-0&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;APPS_VACUUM:R1-5-2&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;ASYN:R4-17-2&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;AUTOSAVE:R4-8-bessy2&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;BESSYRULES:R2-15&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;BINP:R2-5&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;BSPDEP_CPUBOARDINIT:R4-1&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;BSPDEP_ENABLED32:R4-2&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;BSPDEP_TIMER:R6-2&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;BSPDEP_VMETAS:R2-0&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;CAPUTLOG:R3-3-2&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;CSM:R3-7&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;DEVGPIB:R2-2-0&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;DEVIOCSTATS:R3-1-9-bessy3&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;DEVLIB2:R2-3-1&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;DISTVERSION:R2-2&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;DYNCON:R3-2&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;EK:R2-2&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;ESD:R2-1&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;GENSUB:R1-6-1&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;HIGHLAND_V375:R1-2-3&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;HIGHLAND_V680:R1-3&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;HIGHLAND_V850:R2-3-2&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;MCAN:R2-6-3-2&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;MISC_DBC:R3-0&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;MISC_DEBUGMSG:R3-0&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;MOTOR:R6-5-2-2&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;MUXV:R2-3&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;RFM2G-OSI:R1-2&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;SEQ:R2-1-16&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;SOFT_DEVHWCLIENT:R3-0&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;STD:R2-8-bessy2&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;STREAMDEVICE:R2-4-0-4&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;TDU:R4-2&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;TOOLS_DBOPT:R0-4&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;TOOLS_MSI:R1-5-bessy3&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;VCT6:R2-3&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;VPDU:R2-3&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;VXBOOTPARAMS:R2-3&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;VXI-11:R3-0&quot;</span><span class="p">,</span>
+        <span class="s2">&quot;WAVEPROC:R1-0-1&quot;</span>
+    <span class="p">]</span>
+<span class="p">}</span>
+</pre></div>
+</div>
+</section>
+</section>
+</section>
+
+
+           </div>
+          </div>
+          <footer><div class="rst-footer-buttons" role="navigation" aria-label="Footer">
+        <a href="modulespecs.html" class="btn btn-neutral float-left" title="Module Specifications" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left" aria-hidden="true"></span> Previous</a>
+        <a href="reference-sumo-scan.html" class="btn btn-neutral float-right" title="sumo-scan" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right" aria-hidden="true"></span></a>
+    </div>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2022, Helmholtz-Zentrum Berlin GmbH.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>

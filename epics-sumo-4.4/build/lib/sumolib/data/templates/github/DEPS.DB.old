@@ -1,0 +1,260 @@
+{
+    "AREADETECTOR": {
+        "R3-9": {
+            "aliases": {
+                "BASE": "EPICS_BASE"
+            },
+            "dependencies": [
+                "BASE",
+                "AUTOSAVE",
+                "BUSY",
+                "CALC",
+                "SSCAN"
+            ],
+            "source": {
+                "git": {
+                    "commands": [
+                        "git submodule update --init --recursive"
+                    ],
+                    "tag": "R3-9",
+                    "url": "https://github.com/areaDetector/areaDetector.git"
+                }
+            }
+        },
+        "R3-9-BOOST": {
+            "aliases": {
+                "BASE": "EPICS_BASE"
+            },
+            "dependencies": [
+                "BASE",
+                "AUTOSAVE",
+                "BUSY",
+                "CALC",
+                "SSCAN"
+            ],
+            "make-recipes": {
+                "config": [
+                    "echo 'WITH_BOOST=YES' >> $DIR/configure/CONFIG_SITE.local"
+                ]
+            },
+            "source": {
+                "git": {
+                    "commands": [
+                        "git submodule update --init --recursive"
+                    ],
+                    "tag": "R3-9",
+                    "url": "https://github.com/areaDetector/areaDetector.git"
+                }
+            }
+        }
+    },
+    "ASYN": {
+        "R4-40-1": {
+            "aliases": {
+                "BASE": "EPICS_BASE"
+            },
+            "dependencies": [
+                "BASE"
+            ],
+            "make-recipes": {
+                "config": [
+                    "if ldconfig -p | grep -q libtirpc; then sed -i -e 's/^# *\\(TIRPC *=.*\\)/\\1/' $DIR/configure/CONFIG_SITE; fi"
+                ]
+            },
+            "source": {
+                "git": {
+                    "tag": "R4-40-1",
+                    "url": "https://github.com/epics-modules/asyn.git"
+                }
+            }
+        }
+    },
+    "AUTOSAVE": {
+        "R5-10-1": {
+            "aliases": {
+                "BASE": "EPICS_BASE"
+            },
+            "dependencies": [
+                "BASE"
+            ],
+            "source": {
+                "git": {
+                    "tag": "R5-10-1",
+                    "url": "https://github.com/epics-modules/autosave"
+                }
+            }
+        }
+    },
+    "BASE": {
+        "R3-14-12-8": {
+            "make-recipes": {
+                "config": [
+                    "echo \"export EPICS_HOST_ARCH=$$(perl $(BASE)/src/tools/EpicsHostArch.pl)\" > $DIR/setenv.sh",
+                    "echo \"export EPICS_BASE=$(BASE)\" >> $DIR/setenv.sh",
+                    "echo \"export PATH=\\$$EPICS_BASE/bin/\\$$EPICS_HOST_ARCH:\\$$PATH\" >> $DIR/setenv.sh"
+                ],
+                "distclean": [
+                    "$(MAKE) -C $DIR distclean",
+                    "rm -f $DIR/setenv.sh"
+                ]
+            },
+            "source": {
+                "git": {
+                    "tag": "R3.14.12.8",
+                    "url": "https://github.com/epics-base/epics-base.git"
+                }
+            }
+        },
+        "R3-15-8": {
+            "make-recipes": {
+                "config": [
+                    "echo \"export EPICS_HOST_ARCH=$$(perl $(BASE)/src/tools/EpicsHostArch.pl)\" > $DIR/setenv.sh",
+                    "echo \"export EPICS_BASE=$(BASE)\" >> $DIR/setenv.sh",
+                    "echo \"export PATH=\\$$EPICS_BASE/bin/\\$$EPICS_HOST_ARCH:\\$$PATH\" >> $DIR/setenv.sh"
+                ],
+                "distclean": [
+                    "$(MAKE) -C $DIR distclean",
+                    "rm -f $DIR/setenv.sh"
+                ]
+            },
+            "source": {
+                "git": {
+                    "tag": "R3.15.8",
+                    "url": "https://github.com/epics-base/epics-base.git"
+                }
+            }
+        },
+        "R3-16-2": {
+            "make-recipes": {
+                "config": [
+                    "echo \"export EPICS_HOST_ARCH=$$(perl $(BASE)/src/tools/EpicsHostArch.pl)\" > $DIR/setenv.sh",
+                    "echo \"export EPICS_BASE=$(BASE)\" >> $DIR/setenv.sh",
+                    "echo \"export PATH=\\$$EPICS_BASE/bin/\\$$EPICS_HOST_ARCH:\\$$PATH\" >> $DIR/setenv.sh"
+                ],
+                "distclean": [
+                    "$(MAKE) -C $DIR distclean",
+                    "rm -f $DIR/setenv.sh"
+                ]
+            },
+            "source": {
+                "git": {
+                    "tag": "R3.16.2",
+                    "url": "https://github.com/epics-base/epics-base.git"
+                }
+            }
+        },
+        "R7-0-4-1": {
+            "make-recipes": {
+                "config": [
+                    "echo \"export EPICS_HOST_ARCH=$$(perl $(BASE)/src/tools/EpicsHostArch.pl)\" > $DIR/setenv.sh",
+                    "echo \"export EPICS_BASE=$(BASE)\" >> $DIR/setenv.sh",
+                    "echo \"export PATH=\\$$EPICS_BASE/bin/\\$$EPICS_HOST_ARCH:\\$$PATH\" >> $DIR/setenv.sh"
+                ],
+                "distclean": [
+                    "$(MAKE) -C $DIR distclean",
+                    "rm -f $DIR/setenv.sh"
+                ]
+            },
+            "source": {
+                "git": {
+                    "commands": [
+                        "git submodule update --init --reference ./"
+                    ],
+                    "tag": "R7.0.4.1",
+                    "url": "https://github.com/epics-base/epics-base.git"
+                }
+            }
+        }
+    },
+    "BUSY": {
+        "R1-7-2": {
+            "aliases": {
+                "BASE": "EPICS_BASE"
+            },
+            "dependencies": [
+                "BASE"
+            ],
+            "source": {
+                "git": {
+                    "tag": "R1-7-2",
+                    "url": "https://github.com/epics-modules/busy"
+                }
+            }
+        }
+    },
+    "CALC": {
+        "R3-7-4": {
+            "aliases": {
+                "BASE": "EPICS_BASE"
+            },
+            "dependencies": [
+                "BASE"
+            ],
+            "source": {
+                "git": {
+                    "tag": "R3-7-4",
+                    "url": "https://github.com/epics-modules/calc"
+                }
+            }
+        }
+    },
+    "SEQ": {
+        "R2-2-8": {
+            "aliases": {
+                "BASE": "EPICS_BASE"
+            },
+            "dependencies": [
+                "BASE"
+            ],
+            "source": {
+                "tar": {
+                    "url": "http://www-csr.bessy.de/control/SoftDist/sequencer/releases/seq-2.2.8.tar.gz"
+                }
+            }
+        }
+    },
+    "SSCAN": {
+        "R2-11-3": {
+            "aliases": {
+                "BASE": "EPICS_BASE"
+            },
+            "dependencies": [
+                "BASE"
+            ],
+            "source": {
+                "git": {
+                    "tag": "R2-11-3",
+                    "url": "https://github.com/epics-modules/sscan"
+                }
+            }
+        }
+    },
+    "STREAMDEVICE": {
+        "R2-8-16": {
+            "aliases": {
+                "BASE": "EPICS_BASE"
+            },
+            "dependencies": [
+                "ASYN",
+                "BASE"
+            ],
+            "make-recipes": {
+                "config": [
+                    "mv -f $DIR/GNUmakefile $DIR/GNUmakefile.sumo.orig"
+                ],
+                "distclean": [
+                    "$(MAKE) -C $DIR clean",
+                    "for f in $$(find $DIR -name '*.sumo.orig'); do\\",
+                    "  cp -a $$f $$(dirname $$f)/$$(basename $$f .sumo.orig) && rm -f $$f;\\",
+                    "done"
+                ]
+            },
+            "source": {
+                "git": {
+                    "tag": "2.8.16",
+                    "url": "https://github.com/paulscherrerinstitute/StreamDevice.git"
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,36 @@
+Metadata-Version: 2.1
+Name: epics-sumo
+Version: 4.4
+Summary: Python support tools for EPICS software development
+Home-page: https://epics-sumo.sourceforge.io
+Author: Goetz Pfeiffer
+Author-email: Goetz.Pfeiffer@helmholtz-berlin.de
+License: GPLv3
+Download-URL: https://sourceforge.net/projects/epics-sumo/files
+Platform: UNKNOWN
+Classifier: Development Status :: 6 - Mature
+Classifier: Environment :: Console
+Classifier: Intended Audience :: Developers
+Classifier: Intended Audience :: Science/Research
+Classifier: License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)
+Classifier: Natural Language :: English
+Classifier: Operating System :: POSIX
+Classifier: Operating System :: Unix
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.2
+Classifier: Programming Language :: Python :: 3.3
+Classifier: Programming Language :: Python :: 3.4
+Classifier: Programming Language :: Python :: 3.5
+Classifier: Programming Language :: Python :: 3.6
+Classifier: Programming Language :: Python :: Implementation
+Classifier: Programming Language :: Python :: Implementation :: CPython
+Classifier: Topic :: Scientific/Engineering
+Classifier: Topic :: Scientific/Engineering :: Physics
+Classifier: Topic :: Software Development
+Classifier: Topic :: Software Development :: Build Tools
+Classifier: Topic :: Utilities
+License-File: LICENSE
+
+UNKNOWN
+
