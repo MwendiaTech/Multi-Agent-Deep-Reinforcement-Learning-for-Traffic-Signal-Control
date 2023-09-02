@@ -32,7 +32,51 @@ To run these projects, you'll need:
 
 ### Installing SUMO
 
-SUMO is a critical component for these projects. You can download it from the official website:
+sumo
+====
+
+About
+-----
+
+sumo, the SUpport MOdule manager, is a set of tools to support software
+development for the `EPICS <https://epics.anl.gov>`_ framework. It manages
+build dependencies and consistent builds of the 
+`EPICS <https://epics.anl.gov>`_ base and `EPICS <https://epics.anl.gov>`_
+support modules.
+
+Author
+------
+
+Goetz Pfeiffer <Goetz.Pfeiffer@helmholtz-berlin.de>
+
+Documentation
+-------------
+
+Documentation is available online here:
+
+`sumo documentation <https://epics-sumo.sourceforge.io>`_.
+
+Documentation is also included in the software distribution in HTML format.
+
+Installation
+------------
+
+You can install sumo with `pip <https://pip.pypa.io/en/stable>`_
+(python package manager), as 
+`debian <https://www.debian.org/distrib/packages>`_  or 
+`rpm <http://rpm.org>`_  package or from 
+`source <https://docs.python.org/3/install>`_.
+
+All is described here:
+
+`sumo install <https://epics-sumo.sourceforge.io/sumo-install.html>`_.
+
+License
+-------
+
+Sumo is licensed under GNU GPL v.3. Here is the license text:
+
+`sumo license <https://epics-sumo.sourceforge.io/license.html>`_.
 
 [SUMO Download Page](https://sumo.dlr.de/docs/Downloads.php)
 
@@ -42,7 +86,7 @@ Please follow the installation instructions provided on the SUMO website to ensu
 
 ### AT-Conv-LSTM
 
-[AT-Conv-LSTM Project Repository]([link-to-AT-Conv-LSTM-repo](https://github.com/PeterMwendia/Multi-Agent-Deep-Reinforcement-Learning-for-Traffic-Signal-Control/tree/main/AT-Conv-LSTM))
+[AT-Conv-LSTM Project Repository](https://github.com/PeterMwendia/Multi-Agent-Deep-Reinforcement-Learning-for-Traffic-Signal-Control/tree/main/AT-Conv-LSTM)
 
 - **Description**: AT-Conv-LSTM (Attention-based Convolutional LSTM) is a deep learning model designed for traffic signal control.
 - **Project Structure**: The AT-Conv-LSTM project is organized into several folders, including:
